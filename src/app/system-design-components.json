@@ -1,0 +1,589 @@
+{
+    "components": [
+      {
+        "id": "load_balancer",
+        "name": "Load Balancer",
+        "type": "Networking",
+        "description": "Distributes incoming requests across multiple servers for reliability and scalability.",
+        "tags": ["balancer", "traffic", "high availability", "scaling"],
+        "inputs": ["Client Requests"],
+        "outputs": ["Application Servers"]
+      },
+      {
+        "id": "reverse_proxy",
+        "name": "Reverse Proxy",
+        "type": "Networking",
+        "description": "Forwards client requests to backend services, often used for security and routing.",
+        "tags": ["routing", "http", "nginx", "haproxy"],
+        "inputs": ["Client"],
+        "outputs": ["Backend Services"]
+      },
+      {
+        "id": "cdn",
+        "name": "Content Delivery Network (CDN)",
+        "type": "Networking",
+        "description": "Delivers static and cached content from edge servers near users.",
+        "tags": ["static", "latency", "edge", "cache"],
+        "inputs": ["Object Storage"],
+        "outputs": ["Clients"]
+      },
+      {
+        "id": "dns",
+        "name": "DNS Server",
+        "type": "Networking",
+        "description": "Resolves domain names to IP addresses.",
+        "tags": ["domain", "resolution", "route53", "dns"],
+        "inputs": ["Client Request"],
+        "outputs": ["IP Address"]
+      },
+      {
+        "id": "nat_gateway",
+        "name": "NAT Gateway",
+        "type": "Networking",
+        "description": "Enables private subnets to access the internet.",
+        "tags": ["network", "cloud", "aws"],
+        "inputs": ["Private Subnet"],
+        "outputs": ["Internet"]
+      },
+      {
+        "id": "vpc",
+        "name": "Virtual Private Cloud (VPC)",
+        "type": "Networking",
+        "description": "Isolated network within the cloud environment.",
+        "tags": ["networking", "aws", "subnets", "firewalls"],
+        "inputs": ["Cloud Network"],
+        "outputs": ["Internal Routing"]
+      },
+      {
+        "id": "api_gateway",
+        "name": "API Gateway",
+        "type": "Networking",
+        "description": "Manages and routes API requests to appropriate backend services.",
+        "tags": ["api", "routing", "rest", "graphql"],
+        "inputs": ["Client Requests"],
+        "outputs": ["Application Servers"]
+      },
+      {
+        "id": "service_mesh",
+        "name": "Service Mesh",
+        "type": "Networking",
+        "description": "Manages service-to-service communication with features like traffic control and observability (e.g., Istio, Linkerd).",
+        "tags": ["microservices", "traffic", "observability", "istio"],
+        "inputs": ["Service Requests"],
+        "outputs": ["Service Responses"]
+      },
+      {
+        "id": "multi_region_replication",
+        "name": "Multi-Region Replication",
+        "type": "Networking",
+        "description": "Replicates data or services across multiple geographic regions for high availability and low latency.",
+        "tags": ["replication", "high availability", "geo-distributed"],
+        "inputs": ["Primary Region Data"],
+        "outputs": ["Replicated Region Data"]
+      },
+      {
+        "id": "edge_compute",
+        "name": "Edge Compute",
+        "type": "Networking",
+        "description": "Runs compute workloads closer to end-users at the network edge (e.g., AWS Lambda@Edge, Cloudflare Workers).",
+        "tags": ["edge", "low-latency", "serverless", "iot"],
+        "inputs": ["Client Requests", "Edge Triggers"],
+        "outputs": ["Processed Responses"]
+      },
+      {
+        "id": "vpn",
+        "name": "Virtual Private Network (VPN)",
+        "type": "Networking",
+        "description": "Provides secure remote access to private networks over the internet.",
+        "tags": ["security", "remote", "network"],
+        "inputs": ["Client Connections"],
+        "outputs": ["Private Network Access"]
+      },
+      {
+        "id": "traffic_manager",
+        "name": "Traffic Manager",
+        "type": "Networking",
+        "description": "Routes traffic based on policies like geography or latency (e.g., Azure Traffic Manager).",
+        "tags": ["routing", "geo-distribution", "dns"],
+        "inputs": ["Client Requests"],
+        "outputs": ["Optimal Endpoint"]
+      },
+      {
+        "id": "web_server",
+        "name": "Web Server",
+        "type": "Compute",
+        "description": "Serves static content and handles basic HTTP requests.",
+        "tags": ["nginx", "apache", "frontend"],
+        "inputs": ["Browser"],
+        "outputs": ["HTML", "JS", "CSS"]
+      },
+      {
+        "id": "application_server",
+        "name": "Application Server",
+        "type": "Compute",
+        "description": "Processes business logic and serves APIs.",
+        "tags": ["backend", "logic", "api", "express", "spring"],
+        "inputs": ["API Gateway"],
+        "outputs": ["Databases", "Services"]
+      },
+      {
+        "id": "lambda",
+        "name": "Serverless Function",
+        "type": "Compute",
+        "description": "Event-driven compute that runs on demand (e.g., AWS Lambda).",
+        "tags": ["serverless", "event", "on-demand"],
+        "inputs": ["Triggers"],
+        "outputs": ["Process Output"]
+      },
+      {
+        "id": "container",
+        "name": "Container",
+        "type": "Compute",
+        "description": "Lightweight, portable executable units (e.g., Docker).",
+        "tags": ["docker", "isolation", "microservices"],
+        "inputs": ["Image"],
+        "outputs": ["Running Process"]
+      },
+      {
+        "id": "vm",
+        "name": "Virtual Machine",
+        "type": "Compute",
+        "description": "Traditional compute unit emulating physical hardware.",
+        "tags": ["ec2", "cloud", "compute", "gce"],
+        "inputs": ["OS Image"],
+        "outputs": ["System Instance"]
+      },
+      {
+        "id": "batch_processor",
+        "name": "Batch Processor",
+        "type": "Compute",
+        "description": "Processes large volumes of data in batches (e.g., Apache Spark, AWS Batch).",
+        "tags": ["batch", "data processing", "spark"],
+        "inputs": ["Data Sets"],
+        "outputs": ["Processed Data"]
+      },
+      {
+        "id": "stream_processor",
+        "name": "Stream Processor",
+        "type": "Compute",
+        "description": "Processes real-time data streams (e.g., Apache Flink, Kinesis).",
+        "tags": ["streaming", "real-time", "flink"],
+        "inputs": ["Data Streams"],
+        "outputs": ["Processed Streams"]
+      },
+      {
+        "id": "container_orchestrator",
+        "name": "Container Orchestrator",
+        "type": "Compute",
+        "description": "Manages and scales containerized applications (e.g., Kubernetes, ECS).",
+        "tags": ["kubernetes", "orchestration", "containers"],
+        "inputs": ["Container Images"],
+        "outputs": ["Deployed Containers"]
+      },
+      {
+        "id": "gpu_cluster",
+        "name": "GPU Cluster",
+        "type": "Compute",
+        "description": "High-performance compute for parallel processing tasks like ML training or simulations.",
+        "tags": ["gpu", "hpc", "machine learning"],
+        "inputs": ["Workloads"],
+        "outputs": ["Computed Results"]
+      },
+      {
+        "id": "database_sql",
+        "name": "SQL Database",
+        "type": "Storage",
+        "description": "Relational DBMS for structured data (e.g., PostgreSQL, MySQL).",
+        "tags": ["rdbms", "structured", "schema"],
+        "inputs": ["Application Server"],
+        "outputs": ["Rows"]
+      },
+      {
+        "id": "database_nosql",
+        "name": "NoSQL Database",
+        "type": "Storage",
+        "description": "Flexible schema-less databases (e.g., MongoDB, DynamoDB).",
+        "tags": ["nosql", "document", "key-value"],
+        "inputs": ["App Server"],
+        "outputs": ["Documents"]
+      },
+      {
+        "id": "object_storage",
+        "name": "Object Storage",
+        "type": "Storage",
+        "description": "Stores unstructured data like images, videos (e.g., S3, GCS).",
+        "tags": ["blob", "media", "cloud", "s3"],
+        "inputs": ["Upload"],
+        "outputs": ["Download"]
+      },
+      {
+        "id": "cache",
+        "name": "In-Memory Cache",
+        "type": "Storage",
+        "description": "Stores frequently accessed data in memory (e.g., Redis, Memcached).",
+        "tags": ["low-latency", "hot data", "redis"],
+        "inputs": ["DB", "App Server"],
+        "outputs": ["Cached Data"]
+      },
+      {
+        "id": "search_engine",
+        "name": "Search Engine",
+        "type": "Storage",
+        "description": "Indexes and queries large-scale data efficiently (e.g., Elasticsearch).",
+        "tags": ["full-text", "elastic", "indexing"],
+        "inputs": ["Documents"],
+        "outputs": ["Search Results"]
+      },
+      {
+        "id": "data_lake",
+        "name": "Data Lake",
+        "type": "Storage",
+        "description": "Stores massive unstructured datasets for analytics and ML.",
+        "tags": ["big data", "s3", "etl"],
+        "inputs": ["Raw Data"],
+        "outputs": ["Analytics"]
+      },
+      {
+        "id": "data_warehouse",
+        "name": "Data Warehouse",
+        "type": "Storage",
+        "description": "Optimized for analytical queries on large datasets (e.g., Snowflake, Redshift).",
+        "tags": ["analytics", "big data", "olap"],
+        "inputs": ["ETL Pipelines"],
+        "outputs": ["Query Results"]
+      },
+      {
+        "id": "file_storage",
+        "name": "File Storage",
+        "type": "Storage",
+        "description": "Networked storage for file-based access (e.g., NFS, EFS).",
+        "tags": ["files", "nas", "efs"],
+        "inputs": ["File Upload"],
+        "outputs": ["File Access"]
+      },
+      {
+        "id": "time_series_database",
+        "name": "Time-Series Database",
+        "type": "Storage",
+        "description": "Optimized for time-stamped data (e.g., InfluxDB, TimescaleDB).",
+        "tags": ["time-series", "metrics", "iot"],
+        "inputs": ["Time-Stamped Data"],
+        "outputs": ["Time-Based Queries"]
+      },
+      {
+        "id": "block_storage",
+        "name": "Block Storage",
+        "type": "Storage",
+        "description": "High-performance storage for databases or VMs (e.g., AWS EBS).",
+        "tags": ["block", "ebs", "high-performance"],
+        "inputs": ["Application Data"],
+        "outputs": ["Persistent Storage"]
+      },
+      {
+        "id": "archival_storage",
+        "name": "Archival Storage",
+        "type": "Storage",
+        "description": "Cost-effective storage for infrequently accessed data (e.g., AWS Glacier, Azure Archive).",
+        "tags": ["archive", "cold storage", "backup"],
+        "inputs": ["Data Backups"],
+        "outputs": ["Archived Data"]
+      },
+      {
+        "id": "message_queue",
+        "name": "Message Queue",
+        "type": "Messaging",
+        "description": "Manages asynchronous communication (e.g., Kafka, RabbitMQ).",
+        "tags": ["queue", "async", "pubsub"],
+        "inputs": ["Producers"],
+        "outputs": ["Consumers"]
+      },
+      {
+        "id": "event_bus",
+        "name": "Event Bus",
+        "type": "Messaging",
+        "description": "Routes events between services (e.g., EventBridge, Kafka).",
+        "tags": ["events", "decoupling", "async"],
+        "inputs": ["Producers"],
+        "outputs": ["Subscribers"]
+      },
+      {
+        "id": "websocket_gateway",
+        "name": "WebSocket Gateway",
+        "type": "Messaging",
+        "description": "Enables bi-directional, real-time communication.",
+        "tags": ["realtime", "chat", "sockets"],
+        "inputs": ["Clients"],
+        "outputs": ["Server"]
+      },
+      {
+        "id": "webhook",
+        "name": "Webhook",
+        "type": "Messaging",
+        "description": "Sends HTTP callbacks to external services on specific events.",
+        "tags": ["callback", "http", "event"],
+        "inputs": ["Event Triggers"],
+        "outputs": ["HTTP Requests"]
+      },
+      {
+        "id": "notification_service",
+        "name": "Notification Service",
+        "type": "Messaging",
+        "description": "Sends notifications via email, SMS, or push (e.g., SNS, Firebase).",
+        "tags": ["notification", "email", "push"],
+        "inputs": ["Messages"],
+        "outputs": ["User Devices"]
+      },
+      {
+        "id": "event_sourcing",
+        "name": "Event Sourcing System",
+        "type": "Messaging",
+        "description": "Stores state as a sequence of events for auditability and replay (e.g., EventStoreDB).",
+        "tags": ["event-sourcing", "cqrs", "audit"],
+        "inputs": ["Events"],
+        "outputs": ["Event Log"]
+      },
+      {
+        "id": "pubsub_broker",
+        "name": "Pub/Sub Broker",
+        "type": "Messaging",
+        "description": "Facilitates publish-subscribe messaging patterns (e.g., Google Pub/Sub, Redis Pub/Sub).",
+        "tags": ["pubsub", "messaging", "async"],
+        "inputs": ["Publisher Messages"],
+        "outputs": ["Subscriber Notifications"]
+      },
+      {
+        "id": "auth_service",
+        "name": "Authentication Service",
+        "type": "Security",
+        "description": "Manages user identity and token issuance (e.g., OAuth2, Auth0).",
+        "tags": ["jwt", "identity", "auth"],
+        "inputs": ["Login"],
+        "outputs": ["Token"]
+      },
+      {
+        "id": "rate_limiter",
+        "name": "Rate Limiter",
+        "type": "Security",
+        "description": "Throttles request volume to avoid abuse.",
+        "tags": ["ddos", "limit", "quota"],
+        "inputs": ["Request"],
+        "outputs": ["Throttle Decision"]
+      },
+      {
+        "id": "firewall",
+        "name": "Firewall",
+        "type": "Security",
+        "description": "Filters traffic based on security rules.",
+        "tags": ["block", "ip", "network"],
+        "inputs": ["Traffic"],
+        "outputs": ["Allowed Traffic"]
+      },
+      {
+        "id": "secrets_manager",
+        "name": "Secrets Manager",
+        "type": "Security",
+        "description": "Stores and manages API keys and secrets securely.",
+        "tags": ["vault", "credentials", "env"],
+        "inputs": ["App Server"],
+        "outputs": ["Secrets"]
+      },
+      {
+        "id": "identity_provider",
+        "name": "Identity Provider (IdP)",
+        "type": "Security",
+        "description": "Centralized identity management for SSO (e.g., Okta, Azure AD).",
+        "tags": ["sso", "identity", "saml"],
+        "inputs": ["User Credentials"],
+        "outputs": ["Authentication Token"]
+      },
+      {
+        "id": "waf",
+        "name": "Web Application Firewall (WAF)",
+        "type": "Security",
+        "description": "Protects web applications from common attacks like SQL injection.",
+        "tags": ["security", "web", "cloudflare"],
+        "inputs": ["Web Traffic"],
+        "outputs": ["Filtered Traffic"]
+      },
+      {
+        "id": "intrusion_detection",
+        "name": "Intrusion Detection System (IDS)",
+        "type": "Security",
+        "description": "Monitors network traffic for suspicious activity (e.g., Snort, AWS GuardDuty).",
+        "tags": ["security", "monitoring", "threat"],
+        "inputs": ["Network Traffic"],
+        "outputs": ["Alerts"]
+      },
+      {
+        "id": "encryption_service",
+        "name": "Encryption Service",
+        "type": "Security",
+        "description": "Handles encryption and decryption of data at rest or in transit (e.g., AWS KMS).",
+        "tags": ["encryption", "kms", "security"],
+        "inputs": ["Data"],
+        "outputs": ["Encrypted/Decrypted Data"]
+      },
+      {
+        "id": "ci_cd",
+        "name": "CI/CD Pipeline",
+        "type": "DevOps",
+        "description": "Builds, tests, and deploys code automatically (e.g., GitHub Actions, Jenkins).",
+        "tags": ["deploy", "integration", "delivery"],
+        "inputs": ["Source Code"],
+        "outputs": ["Deployed Service"]
+      },
+      {
+        "id": "monitoring",
+        "name": "Monitoring System",
+        "type": "DevOps",
+        "description": "Tracks metrics, logs, and alerts (e.g., Prometheus, Datadog).",
+        "tags": ["logs", "metrics", "alert"],
+        "inputs": ["System"],
+        "outputs": ["Dashboards"]
+      },
+      {
+        "id": "tracing",
+        "name": "Distributed Tracing",
+        "type": "DevOps",
+        "description": "Tracks requests through microservices (e.g., Jaeger, OpenTelemetry).",
+        "tags": ["trace", "span", "debug"],
+        "inputs": ["Requests"],
+        "outputs": ["Trace Logs"]
+      },
+      {
+        "id": "log_aggregator",
+        "name": "Log Aggregator",
+        "type": "DevOps",
+        "description": "Collects and centralizes logs for analysis (e.g., ELK Stack, Splunk).",
+        "tags": ["logs", "centralized", "elk"],
+        "inputs": ["System Logs"],
+        "outputs": ["Log Analysis"]
+      },
+      {
+        "id": "configuration_manager",
+        "name": "Configuration Manager",
+        "type": "DevOps",
+        "description": "Manages system configurations and infrastructure as code (e.g., Terraform, Ansible).",
+        "tags": ["iac", "configuration", "ansible"],
+        "inputs": ["Config Files"],
+        "outputs": ["Deployed Infrastructure"]
+      },
+      {
+        "id": "chaos_engineering",
+        "name": "Chaos Engineering Tool",
+        "type": "DevOps",
+        "description": "Tests system resilience by introducing controlled failures (e.g., Chaos Monkey, Gremlin).",
+        "tags": ["resilience", "testing", "chaos"],
+        "inputs": ["System Configuration"],
+        "outputs": ["Failure Reports"]
+      },
+      {
+        "id": "cost_management",
+        "name": "Cost Management System",
+        "type": "DevOps",
+        "description": "Tracks and optimizes cloud resource costs (e.g., AWS Cost Explorer, CloudHealth).",
+        "tags": ["cost", "billing", "optimization"],
+        "inputs": ["Resource Usage"],
+        "outputs": ["Cost Reports"]
+      },
+      {
+        "id": "service_discovery",
+        "name": "Service Discovery",
+        "type": "DevOps",
+        "description": "Dynamically discovers and connects services in a microservices architecture (e.g., Consul, Eureka).",
+        "tags": ["microservices", "discovery", "network"],
+        "inputs": ["Service Registry"],
+        "outputs": ["Service Endpoints"]
+      },
+      {
+        "id": "model_serving",
+        "name": "ML Model Serving",
+        "type": "ML/AI",
+        "description": "Serves trained ML models for inference (e.g., TorchServe, Vertex AI).",
+        "tags": ["inference", "ai", "prediction"],
+        "inputs": ["Features"],
+        "outputs": ["Prediction"]
+      },
+      {
+        "id": "feature_store",
+        "name": "Feature Store",
+        "type": "ML/AI",
+        "description": "Stores reusable ML features (e.g., Feast).",
+        "tags": ["ml", "feature", "training"],
+        "inputs": ["Raw Data"],
+        "outputs": ["Features"]
+      },
+      {
+        "id": "etl_pipeline",
+        "name": "ETL Pipeline",
+        "type": "ML/AI",
+        "description": "Extracts, transforms, and loads data for analytics and ML (e.g., Airflow, NiFi).",
+        "tags": ["data", "pipeline", "transformation"],
+        "inputs": ["Raw Data"],
+        "outputs": ["Processed Data"]
+      },
+      {
+        "id": "model_training",
+        "name": "ML Model Training",
+        "type": "ML/AI",
+        "description": "Trains machine learning models on datasets (e.g., SageMaker, Kubeflow).",
+        "tags": ["ml", "training", "model"],
+        "inputs": ["Features", "Labels"],
+        "outputs": ["Trained Model"]
+      },
+      {
+        "id": "data_pipeline_orchestrator",
+        "name": "Data Pipeline Orchestrator",
+        "type": "ML/AI",
+        "description": "Manages and schedules data processing workflows (e.g., Airflow, Prefect).",
+        "tags": ["workflow", "orchestration", "data"],
+        "inputs": ["Data Tasks"],
+        "outputs": ["Processed Data"]
+      },
+      {
+        "id": "model_monitoring",
+        "name": "ML Model Monitoring",
+        "type": "ML/AI",
+        "description": "Monitors ML model performance and drift in production (e.g., Evidently AI, Fiddler).",
+        "tags": ["ml", "monitoring", "drift"],
+        "inputs": ["Model Predictions"],
+        "outputs": ["Performance Metrics"]
+      },
+      {
+        "id": "experiment_tracker",
+        "name": "Experiment Tracker",
+        "type": "ML/AI",
+        "description": "Tracks ML experiments, parameters, and results (e.g., MLflow, Weights & Biases).",
+        "tags": ["ml", "experiment", "tracking"],
+        "inputs": ["Experiment Data"],
+        "outputs": ["Experiment Results"]
+      },
+      {
+        "id": "iot_hub",
+        "name": "IoT Hub",
+        "type": "Miscellaneous",
+        "description": "Manages communication with IoT devices (e.g., AWS IoT Core, Azure IoT Hub).",
+        "tags": ["iot", "devices", "connectivity"],
+        "inputs": ["Device Data"],
+        "outputs": ["Processed IoT Data"]
+      },
+      {
+        "id": "blockchain_node",
+        "name": "Blockchain Node",
+        "type": "Miscellaneous",
+        "description": "Participates in a blockchain network for decentralized transactions (e.g., Ethereum, Hyperledger).",
+        "tags": ["blockchain", "decentralized", "crypto"],
+        "inputs": ["Transactions"],
+        "outputs": ["Validated Blocks"]
+      },
+      {
+        "id": "cron_scheduler",
+        "name": "Cron Scheduler",
+        "type": "Miscellaneous",
+        "description": "Schedules recurring tasks or jobs (e.g., AWS EventBridge Scheduler, Airflow).",
+        "tags": ["scheduling", "cron", "automation"],
+        "inputs": ["Task Definitions"],
+        "outputs": ["Scheduled Tasks"]
+      }
+    ]
+  }

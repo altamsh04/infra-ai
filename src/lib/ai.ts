@@ -141,13 +141,13 @@ export async function analyzeSystemRequest(
   availableComponents: SystemComponent[]
 ): Promise<AIRecommendation> {
   const prompt = `
-You are an expert system architect. Analyze the following user request and recommend the most appropriate system components from the available list, organized into logical groups.
+You are an expert system architect. Analyze the following user request and recommend the most appropriate system components from the available list, organized into logical groups. Ensure that connections between components are specified using exact component IDs, supporting one-to-one, one-to-many, or many-to-many relationships based on component inputs and outputs.
 
 User Request: "${userRequest}"
 
 Available Components (${availableComponents.length} total):
 ${availableComponents.map(comp => 
-  `- ${comp.name} (ID: ${comp.id}, Type: ${comp.type}): ${comp.description} [Tags: ${comp.tags.join(', ')}]`
+  `- ${comp.name} (ID: ${comp.id}, Type: ${comp.type}): ${comp.description} [Tags: ${comp.tags.join(', ')}, Inputs: ${comp.inputs.join(', ')}, Outputs: ${comp.outputs.join(', ')}]`
 ).join('\n')}
 
 Please provide a JSON response with the following structure:
@@ -195,19 +195,25 @@ Please provide a JSON response with the following structure:
     {
       "from": "component_id",
       "to": "component_id", 
-      "label": "Connection description (optional)"
+      "label": "Connection description (e.g., API call, data flow)"
     }
   ]
 }
 
 IMPORTANT GUIDELINES:
-1. Use the exact component IDs from the list above. Do not use display names.
-2. Group components logically (e.g., Frontend, Backend, Database, Networking, Storage, etc.)
-3. Only recommend components that are directly relevant to the user's requirements.
+1. Use EXACT component IDs from the provided list for both groups and connections. Do NOT use component names or group names in the connections array.
+2. Group components logically (e.g., Frontend, Backend, Database, Networking, Storage, Security, etc.).
+3. Only recommend components directly relevant to the user's requirements.
 4. Create 3-5 groups maximum, with meaningful group names.
 5. Each group should contain 1-4 components typically.
-6. Each group and component should have an icon (icon name or URL) and a color (hex or Tailwind color).
+6. Each group and component should have an icon (icon name or URL from Simple Icons, e.g., https://simpleicons.org/icons/<icon-name>.svg) and a color (hex or Tailwind color).
 7. Common group names: Frontend, Backend, Database, Networking, Storage, Security, Monitoring, etc.
+8. Connections:
+   - Specify connections using exact component IDs from the available components.
+   - Support one-to-one, one-to-many, or many-to-many relationships based on component inputs/outputs or typical system architecture flows.
+   - Ensure each connection has a meaningful label describing the interaction (e.g., "API call", "Data flow", "Request").
+   - Connections should reflect realistic data flows or dependencies (e.g., a load balancer connects to an application server, which connects to a database).
+9. Validate that all "from" and "to" IDs in connections exist in the recommended components.
 `;
 
   try {
@@ -251,12 +257,24 @@ IMPORTANT GUIDELINES:
       };
     });
     
+    // Validate connections to ensure "from" and "to" IDs exist
+    const validConnections = (parsed.connections || []).filter((conn: any) => {
+      const fromExists = availableComponents.some(comp => comp.id === conn.from);
+      const toExists = availableComponents.some(comp => comp.id === conn.to);
+      if (!fromExists || !toExists) {
+        console.warn(`Invalid connection: from=${conn.from}, to=${conn.to}`);
+        return false;
+      }
+      return true;
+    });
+    
     console.log("Processed groups:", groups);
+    console.log("Validated connections:", validConnections);
     
     return {
       groups,
       explanation: parsed.explanation,
-      connections: parsed.connections || []
+      connections: validConnections
     };
   } catch (error: any) {
     console.error("AI analysis failed:", error);
@@ -318,4 +336,4 @@ Keep the response under 200 words and focus on practical benefits.
     
     return "Unable to explain component choice at this time.";
   }
-} 
+}

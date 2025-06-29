@@ -8,7 +8,7 @@ import { analyzeSystemRequest, SystemComponent, ComponentGroup, AIRecommendation
 
 export default function Home() {
   const [groups, setGroups] = useState<ComponentGroup[]>([]);
-  const [technologies, setTechnologies] = useState<string[]>([]);
+  const [connections, setConnections] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [explanation, setExplanation] = useState<string | undefined>(undefined);
 
@@ -29,7 +29,7 @@ export default function Home() {
       console.log('AI result:', aiResult);
       
       setGroups(aiResult.groups);
-      setTechnologies(aiResult.technologies || []);
+      setConnections(aiResult.connections || []);
       setExplanation(aiResult.explanation);
     } catch (error) {
       console.error('Error in handleSystemRequest:', error);
@@ -51,7 +51,7 @@ export default function Home() {
       </div>
       {/* Right: Canvas */}
       <div className="flex-1 h-full bg-gray-50">
-        <SystemDesignCanvas groups={groups} technologies={technologies} />
+        <SystemDesignCanvas groups={groups} connections={connections} />
       </div>
     </div>
   );

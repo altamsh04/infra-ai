@@ -84,7 +84,7 @@ async function run(prompt: string) {
       generationConfig,
       safetySettings,
       history: [],
-    });
+    }); 
 
     const result = await chatSession.sendMessage(prompt);
     let text = await result.response.text();
@@ -141,7 +141,9 @@ export async function analyzeSystemRequest(
   availableComponents: SystemComponent[]
 ): Promise<AIRecommendation> {
   const prompt = `
-You are an expert system architect. Analyze the following user request and recommend the most appropriate system components from the available list, organized into logical groups. Ensure that connections between components are specified using exact component IDs, supporting one-to-one, one-to-many, or many-to-many relationships based on component inputs and outputs.
+You are an expert system architect. Analyze the following user request and recommend the most appropriate system components from the available list, organized into logical groups (e.g., Frontend, Backend, Database, Networking, etc.).
+
+For each group, recommend the most relevant components. Then, for each connection between groups (not between individual components), specify a short, meaningful label describing the interaction (e.g., "HTTP", "API Call", "DB Query", "DNS Lookup").
 
 User Request: "${userRequest}"
 
@@ -158,182 +160,71 @@ Please provide a JSON response with the following structure:
       "color": "#3b82f6", // hex or Tailwind color for border/background
       "icon": "react", // icon name or URL
       "components": [
-        {
-          "id": "component_id",
-          "icon": "react", // icon name or URL
-          "reason": "Why this component is needed in this group"
-        }
+        { "id": "component_id", "icon": "react" }
       ]
     },
-    {
-      "name": "Backend", 
-      "color": "#f59e42",
-      "icon": "api",
-      "components": [
-        {
-          "id": "component_id",
-          "icon": "api",
-          "reason": "Why this component is needed in this group"
-        }
-      ]
-    },
-    {
-      "name": "Database",
-      "color": "#6366f1",
-      "icon": "database",
-      "components": [
-        {
-          "id": "component_id", 
-          "icon": "database",
-          "reason": "Why this component is needed in this group"
-        }
-      ]
-    }
+    // ... more groups ...
   ],
-  "explanation": "Detailed explanation of the architecture choices and group organization",
   "connections": [
     {
-      "from": "component_id",
-      "to": "component_id", 
-      "label": "Connection description (e.g., API call, data flow)"
+      "from": "Frontend", // group name
+      "to": "Backend",   // group name
+      "label": "HTTP"    // short, meaningful description of the interaction
     }
+    // ... more group-to-group connections ...
   ]
 }
 
 IMPORTANT GUIDELINES:
-1. Use EXACT component IDs from the provided list for both groups and connections. Do NOT use component names or group names in the connections array.
-2. Group components logically (e.g., Frontend, Backend, Database, Networking, Storage, Security, etc.).
-3. Only recommend components directly relevant to the user's requirements.
-4. Create 3-5 groups maximum, with meaningful group names.
-5. Each group should contain 1-4 components typically.
-6. Each group and component should have an icon (icon name or URL from Simple Icons, e.g., https://simpleicons.org/icons/<icon-name>.svg) and a color (hex or Tailwind color).
-7. Common group names: Frontend, Backend, Database, Networking, Storage, Security, Monitoring, etc.
-8. Connections:
-   - Specify connections using exact component IDs from the available components.
-   - Support one-to-one, one-to-many, or many-to-many relationships based on component inputs/outputs or typical system architecture flows.
-   - Ensure each connection has a meaningful label describing the interaction (e.g., "API call", "Data flow", "Request").
-   - Connections should reflect realistic data flows or dependencies (e.g., a load balancer connects to an application server, which connects to a database).
-9. Validate that all "from" and "to" IDs in connections exist in the recommended components.
+1. Only create connections between groups (not between individual components).
+2. Each connection label must be a short, meaningful description of the interaction (e.g., "HTTP", "API Call", "DB Query", "DNS Lookup").
+3. Use group names for the "from" and "to" fields in connections.
+4. Only recommend groups and connections directly relevant to the user's requirements.
+5. Validate that all group names in connections exist in the recommended groups.
 `;
 
   try {
     const text = await run(prompt);
-    
     if (!text) {
       throw new Error("No response from AI");
     }
-    
-    console.log("Raw AI response:", text);
-    
     // Extract JSON from the response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new Error("No valid JSON found in AI response");
     }
-    
     const parsed = JSON.parse(jsonMatch[0]);
-    console.log("Parsed AI response:", parsed);
-    
-    // Process groups and map component IDs to full component objects
+    // Map group names to group objects
     const groups: ComponentGroup[] = (parsed.groups || []).map((group: any, groupIndex: number) => {
       const groupComponents = group.components
-        .map((rec: any) => {
-          const component = findComponentByIdOrName(rec.id, availableComponents);
-          if (component) {
-            console.log(`Found component: ${rec.id} -> ${component.name} (${component.id}) in group ${group.name}`);
-          } else {
-            console.warn(`Component not found: ${rec.id}`);
-          }
-          return component;
-        })
+        .map((rec: any) => findComponentByIdOrName(rec.id, availableComponents))
         .filter(Boolean);
-      
       return {
         name: group.name,
         color: group.color,
         icon: group.icon,
         components: groupComponents,
-        position: { x: groupIndex * 400, y: 0 } // Will be adjusted in canvas
+        position: { x: groupIndex * 400, y: 0 }
       };
     });
-    
-    // Validate connections to ensure "from" and "to" IDs exist
+    // Validate connections to ensure group names exist
+    const groupNames = groups.map(g => g.name);
     const validConnections = (parsed.connections || []).filter((conn: any) => {
-      const fromExists = availableComponents.some(comp => comp.id === conn.from);
-      const toExists = availableComponents.some(comp => comp.id === conn.to);
-      if (!fromExists || !toExists) {
-        console.warn(`Invalid connection: from=${conn.from}, to=${conn.to}`);
-        return false;
-      }
-      return true;
+      return groupNames.includes(conn.from) && groupNames.includes(conn.to) && conn.label;
     });
-    
-    console.log("Processed groups:", groups);
-    console.log("Validated connections:", validConnections);
-    
     return {
       groups,
-      explanation: parsed.explanation,
+      explanation: parsed.explanation || '',
       connections: validConnections
     };
   } catch (error: any) {
     console.error("AI analysis failed:", error);
-    
     if (error.message === "API_KEY_NOT_CONFIGURED") {
       throw new Error("Please configure your Gemini API key in .env.local file");
     }
-    
     if (error.message === "API_KEY_INVALID") {
       throw new Error("Invalid Gemini API key. Please check your API key configuration");
     }
-    
     throw new Error("Failed to analyze system request. Please try again.");
-  }
-}
-
-export async function explainComponentChoice(
-  componentId: string,
-  userRequest: string,
-  availableComponents: SystemComponent[]
-): Promise<string> {
-  const component = availableComponents.find(c => c.id === componentId);
-  
-  if (!component) {
-    return "Component not found";
-  }
-
-  const prompt = `
-Explain why the "${component.name}" component is recommended for this system design request:
-
-User Request: "${userRequest}"
-
-Component Details:
-- Name: ${component.name}
-- Type: ${component.type}
-- Description: ${component.description}
-- Tags: ${component.tags.join(', ')}
-- Inputs: ${component.inputs.join(', ')}
-- Outputs: ${component.outputs.join(', ')}
-
-Provide a clear, concise explanation of:
-1. Why this component is needed for the user's requirements
-2. How it fits into the overall architecture
-3. What problems it solves
-4. Any alternatives that could be considered
-
-Keep the response under 200 words and focus on practical benefits.
-`;
-
-  try {
-    const text = await run(prompt);
-    return text || "Unable to explain component choice at this time.";
-  } catch (error: any) {
-    console.error("Component explanation failed:", error);
-    
-    if (error.message === "API_KEY_NOT_CONFIGURED") {
-      return "Please configure your Gemini API key to get component explanations.";
-    }
-    
-    return "Unable to explain component choice at this time.";
   }
 }

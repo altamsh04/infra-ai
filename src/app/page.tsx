@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { ChatInterface } from '@/components/ChatInterface';
 import { SystemDesignCanvas } from '@/components/SystemDesignCanvas';
 import systemDesignData from './system-design-components.json';
-import { analyzeSystemRequest, SystemComponent, ComponentGroup, AIRecommendation } from '@/lib/ai';
+import { analyzeSystemRequest, SystemComponent, ComponentGroup, AIRecommendation, AIResponse } from '@/lib/ai';
 import ChatSidebar from '@/components/ChatSidebar';
 import { MessageCircle, X, PanelRight, PanelLeft } from 'lucide-react';
 import { SignedIn, UserButton } from '@clerk/nextjs';
@@ -28,7 +28,7 @@ export default function Home() {
     console.log('Page mounted, groups:', groups);
   }, [groups]);
 
-  const handleSystemRequest = async (request: string) => {
+  const handleSystemRequest = async (request: string): Promise<AIResponse> => {
     console.log('Handling system request:', request);
     setIsLoading(true);
     setExplanation(undefined);
@@ -42,15 +42,15 @@ export default function Home() {
         setGroups(aiResult.recommendation.groups);
         setConnections(aiResult.recommendation.connections || []);
         setExplanation(aiResult.recommendation.explanation);
-        setSystemDesignTitle(aiResult.recommendation.title || '');
+        setSystemDesignTitle(aiResult.recommendation.title || null); // Use the AI response title
       }
       return aiResult;
     } catch (error) {
       console.error('Error in handleSystemRequest:', error);
       setExplanation('Sorry, I could not analyze your request. Please try again.');
       return {
-        isSystemDesign: false,
-        message: 'Sorry, I could not analyze your request. Please try again.'
+        message: 'Sorry, I could not analyze your request. Please try again.',
+        isSystemDesign: false
       };
     } finally {
       setIsLoading(false);

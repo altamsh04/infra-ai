@@ -19,12 +19,12 @@ import ReactFlow, {
   Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { User, Network, Database, Server, Shield, Settings, Cloud, Code, Zap, Globe } from 'lucide-react';
+import { User, Network, Database, Server, Shield, Settings, Cloud, Code, Zap, Globe, Trash, MessageCircle, X } from 'lucide-react';
 import { SystemComponent, ComponentGroup } from '@/lib/ai';
 import { ComponentNode } from './ComponentNode';
 import { IconType } from 'react-icons';
 import { FaReact, FaDatabase, FaServer, FaKey, FaGithub, FaGoogle, FaLinkedin, FaStripe, FaCloud, FaCogs } from 'react-icons/fa';
-import dagre from 'dagre';
+import ELK from 'elkjs/lib/elk.bundled.js';
 
 // Group name to icon mapping
 const groupIconMap: Record<string, any> = {
@@ -34,62 +34,62 @@ const groupIconMap: Record<string, any> = {
   cdn: Globe,
   api: Server,
   gateway: Server,
-  
+
   // Compute related
   compute: Zap,
   processing: Zap,
   backend: Server,
   server: Server,
-  
+
   // Security related
   security: Shield,
   auth: Shield,
   authentication: Shield,
   authorization: Shield,
-  
+
   // DevOps related
   devops: Settings,
   deployment: Settings,
   infrastructure: Settings,
   monitoring: Settings,
-  
+
   // Storage related
   storage: Database,
   database: Database,
   data: Database,
-  
+
   // Cloud related
   cloud: Cloud,
   aws: Cloud,
   azure: Cloud,
   gcp: Cloud,
-  
+
   // Frontend related
   frontend: Code,
   ui: Code,
   client: Code,
-  
+
   // Default
   default: Settings,
 };
 
 function getGroupIcon(groupName?: string) {
   if (!groupName) return Settings;
-  
+
   const normalizedName = groupName.toLowerCase();
-  
+
   // Try exact match first
   if (groupIconMap[normalizedName]) {
     return groupIconMap[normalizedName];
   }
-  
+
   // Try partial matches
   for (const [key, icon] of Object.entries(groupIconMap)) {
     if (normalizedName.includes(key) || key.includes(normalizedName)) {
       return icon;
     }
   }
-  
+
   return groupIconMap.default;
 }
 
@@ -115,37 +115,48 @@ function getComponentIcon(icon?: string) {
 }
 
 // Group Node Component (container) - Simple design with top-left label
-const GroupNode = ({ data }: { data: { group: ComponentGroup } }) => {
+const GroupNode = ({ data, id, selected }: { data: { group: ComponentGroup }, id: string, selected?: boolean }) => {
   const { group } = data;
-  
+
   // Consistent sizing constants - UPDATED to match component positioning
   const labelHeight = 70; // Space reserved for the top label (increased)
   const verticalPadding = 20; // Additional padding below label
   const componentHeight = 100; // Match CustomComponentNode height
   const componentGap = 20;
-  
+
   // Calculate exact content height needed
-  const contentHeight = group.components.length * componentHeight + 
-                       Math.max(0, group.components.length - 1) * componentGap;
-  
+  const contentHeight = group.components.length * componentHeight +
+    Math.max(0, group.components.length - 1) * componentGap;
+
   // Minimum content area to ensure groups look proportional
   const minContentHeight = 200;
   const actualContentHeight = Math.max(contentHeight, minContentHeight);
-  
+
   const totalHeight = labelHeight + actualContentHeight + verticalPadding;
 
   // Get appropriate icon for the group
   const GroupIcon = getGroupIcon(group.name);
 
+  // Add delete handler via custom event
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const deleteEvent = new CustomEvent('delete-group', { detail: { groupName: group.name } });
+    window.dispatchEvent(deleteEvent);
+  };
+
   return (
-    <div 
-      className="bg-white/80 backdrop-blur-sm rounded-2xl border-2 border-gray-200 p-0 relative flex flex-col overflow-hidden" 
-      style={{ 
-        height: `${totalHeight}px`,
-        width: '380px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
-      }}
+    <div
+      className="bg-white/80 backdrop-blur-sm rounded-2xl border-2 border-gray-200 p-0 relative flex flex-col overflow-hidden group"
+      style={{ height: `${totalHeight}px`, width: '380px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)' }}
     >
+      {/* Delete Icon */}
+      <button
+        className="absolute top-3 right-3 z-20 bg-white/80 hover:bg-red-100 text-gray-400 hover:text-red-600 rounded-full p-1 shadow transition opacity-0 group-hover:opacity-100"
+        onClick={handleDelete}
+        title="Delete group"
+      >
+        <Trash className="w-4 h-4" />
+      </button>
       {/* Target handle (left) for container-to-container connections */}
       <Handle type="target" position={Position.Left} style={{ background: '#6366f1', width: 16, height: 16, borderRadius: 8, left: -8, top: '50%', transform: 'translateY(-50%)', zIndex: 10 }} />
       {/* Top-left label with icon - FIXED positioning */}
@@ -155,11 +166,11 @@ const GroupNode = ({ data }: { data: { group: ComponentGroup } }) => {
           {group.name}
         </span>
       </div>
-      
+
       {/* Content area for components - PROPERLY sized */}
-      <div 
+      <div
         className="w-full h-full relative"
-        style={{ 
+        style={{
           height: `${totalHeight}px`,
           paddingTop: `${labelHeight}px` // Reserve space for label
         }}
@@ -200,70 +211,89 @@ const CustomComponentNode = ({ data }: { data: { component: SystemComponent } })
   );
 };
 
+// Client Node as a card
+const ClientNode = () => (
+  <div className="rounded-2xl shadow-xl bg-blue-500 flex flex-col items-center justify-center px-6 py-4 min-w-[120px] max-w-[140px] border-2 border-white transition-transform duration-150 hover:scale-105 hover:shadow-2xl font-sans">
+    <User className="w-10 h-10 text-white mb-2" />
+    <span className="text-base font-semibold text-white text-center tracking-tight leading-tight">Client</span>
+  </div>
+);
+
+// Title Node Component
+const TitleNode = ({ data }: { data: { title: string } }) => (
+  <div className="bg-blue-700 text-white px-8 py-3 rounded-2xl shadow-lg border-2 border-blue-700 font-bold text-xl text-center min-w-[320px] max-w-[600px] cursor-move select-none">
+    {data.title}
+  </div>
+);
+
 const nodeTypes: NodeTypes = {
   component: CustomComponentNode,
   group: GroupNode,
-  client: ({ id }: any) => (
-    <div className="rounded-full shadow-lg bg-blue-500 flex flex-col items-center justify-center px-4 py-4 min-w-[80px] max-w-[80px] border-2 border-white">
-      <User className="w-8 h-8 text-white mb-1" />
-      <span className="text-xs font-semibold text-white">Client</span>
-    </div>
-  ),
+  client: ClientNode,
+  title: TitleNode,
 };
 
 interface SystemDesignCanvasProps {
   groups: ComponentGroup[];
-  connections?: { from: string; to: string; label: string }[];
+  connections?: GroupConnection[];
   onGroupsChange?: (groups: ComponentGroup[]) => void;
+  sidebarOpen?: boolean;        // New prop
+  onToggleSidebar?: () => void; // New prop
+  systemDesignTitle?: string | null; // Add this line
 }
 
-// Add this style block at the top of the file or inside the component:
-// Ensures ReactFlow edges overlay above nodes and containers
-const edgeOverlayStyle: React.CSSProperties = {
-  // ReactFlow edge layer is .react-flow__edges
-  // This z-index must be higher than nodes (default is 1, so use 10+)
-  // These are custom CSS vars, ReactFlow will pick them up if supported
-  // @ts-ignore
-  '--rf-z-index-edges': 20,
-  '--rf-z-index-nodes': 10,
-};
+type GroupConnection = { from: string; to: string; label?: string };
 
-function getDagreLayout(groups, connections, direction = 'LR') {
-  const g = new dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: direction });
-
-  // Add nodes (groups)
-  groups.forEach((group) => {
-    g.setNode(group.name, { width: 380, height: 260 }); // Use group card size
-  });
-
-  // Add edges (group-to-group)
-  (connections || []).forEach((conn) => {
-    g.setEdge(conn.from, conn.to);
-  });
-
-  dagre.layout(g);
-
-  // Return a map of group name to dagre-calculated position
-  const posMap = {};
-  groups.forEach((group) => {
-    const nodeWithPos = g.node(group.name);
-    posMap[group.name] = {
-      x: nodeWithPos.x - 190, // Center the group card
-      y: nodeWithPos.y - 130,
-    };
-  });
+async function getElkLayout(
+  groups: ComponentGroup[],
+  connections: GroupConnection[],
+  direction: string = 'RIGHT'
+): Promise<Record<string, { x: number; y: number }>> {
+  const elk = new ELK();
+  const elkGraph = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': direction,
+      'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+      'elk.spacing.nodeNode': '40',
+    },
+    children: groups.map((group: ComponentGroup) => ({
+      id: group.name,
+      width: 380,
+      height: 260,
+    })),
+    edges: (connections || []).map((conn: GroupConnection, idx: number) => ({
+      id: `e${idx}`,
+      sources: [conn.from],
+      targets: [conn.to],
+    })),
+  };
+  const layout = await elk.layout(elkGraph);
+  const posMap: Record<string, { x: number; y: number }> = {};
+  if (layout.children) {
+    layout.children.forEach((node: any) => {
+      posMap[node.id] = {
+        x: node.x,
+        y: node.y,
+      };
+    });
+  }
   return posMap;
 }
 
-function SystemDesignCanvasInner({ 
-  groups, 
+function SystemDesignCanvasInner({
+  groups,
   connections = [],
-  onGroupsChange 
+  onGroupsChange,
+  sidebarOpen,
+  onToggleSidebar,
+  systemDesignTitle,
 }: SystemDesignCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [localGroups, setLocalGroups] = useState(groups);
+  const [localConnections, setLocalConnections] = useState(connections);
 
   // Layout configuration
   const groupSpacingX = 450;
@@ -284,17 +314,17 @@ function SystemDesignCanvasInner({
     type: 'client',
     data: {},
     position: { x: 40, y: groupY + 50 },
-    draggable: false,
+    draggable: true, // Make client node draggable
   };
 
   // Combine all connections with the same from/to group into a single edge with a combined label
   const edgeMap = new Map<string, { from: string; to: string; labels: Set<string> }>();
-  (connections || []).forEach((conn) => {
+  (connections || []).forEach((conn: GroupConnection) => {
     const key = `${conn.from}__${conn.to}`;
     if (!edgeMap.has(key)) {
       edgeMap.set(key, { from: conn.from, to: conn.to, labels: new Set() });
     }
-    edgeMap.get(key)!.labels.add(conn.label);
+    edgeMap.get(key)!.labels.add(conn.label || '');
   });
 
   const groupEdges: Edge[] = Array.from(edgeMap.values()).map((edge, idx) => ({
@@ -314,12 +344,15 @@ function SystemDesignCanvasInner({
     labelStyle: { fill: '#fff', fontWeight: '700' },
   }));
 
-  // Use dagre to layout group nodes
-  const dagrePositions = getDagreLayout(groups, connections, 'LR');
+  // Use ELK to layout group nodes
+  const [elkPositions, setElkPositions] = useState<Record<string, { x: number; y: number }>>({});
+  useEffect(() => {
+    getElkLayout(groups, connections, 'RIGHT').then(setElkPositions);
+  }, [groups, connections]);
 
-  // Create group nodes (parent nodes) with dagre-calculated positions
-  const groupNodes: Node[] = groups.map((group, index) => {
-    const pos = dagrePositions[group.name] || { x: 200 + index * 450, y: 150 };
+  // Create group nodes (parent nodes) with ELK-calculated positions
+  const groupNodes: Node[] = groups.map((group: ComponentGroup, index: number) => {
+    const pos = elkPositions[group.name] || { x: 200 + index * 450, y: 150 };
     const numComponents = group.components.length;
     const contentHeight = numComponents * 100 + Math.max(0, numComponents - 1) * 20;
     const minContentHeight = 200;
@@ -331,7 +364,7 @@ function SystemDesignCanvasInner({
       data: { group },
       position: pos,
       draggable: true,
-      style: { 
+      style: {
         zIndex: 1,
         width: `380px`,
         height: `${totalHeight}px`,
@@ -366,17 +399,34 @@ function SystemDesignCanvasInner({
         parentNode: groupId,
         extent: 'parent',
         draggable: false,
-        style: { 
-          zIndex: 2, 
-          width: `280px`, 
-          height: `100px` 
+        style: {
+          zIndex: 2,
+          width: `280px`,
+          height: `100px`
         },
       };
     });
   });
 
-  // All nodes including client, groups, and components
-  const allNodes = [clientNode, ...groupNodes, ...componentNodes];
+  // Title node (placed above the groups)
+  const titleNode: Node | null = systemDesignTitle
+    ? {
+        id: 'system-design-title',
+        type: 'title',
+        data: { title: systemDesignTitle },
+        position: { x: 500, y: 40 }, // Default position above the groups
+        draggable: true,
+        style: { zIndex: 10 },
+      }
+    : null;
+
+  // All nodes including title, client, groups, and components
+  const allNodes = [
+    ...(titleNode ? [titleNode] : []),
+    clientNode,
+    ...groupNodes,
+    ...componentNodes,
+  ];
 
   // Only use groupEdges for allEdges
   const allEdges = [...groupEdges];
@@ -392,25 +442,137 @@ function SystemDesignCanvasInner({
     [setEdges]
   );
 
+  // Export functionality
+  const exportAsImage = useCallback(() => {
+    const reactFlowElement = document.querySelector('.react-flow');
+    if (!reactFlowElement) return;
+
+    // Get the dimensions of the ReactFlow container
+    const rect = reactFlowElement.getBoundingClientRect();
+
+    // Create a more comprehensive SVG representation of the architecture
+    const svgWidth = Math.max(800, rect.width);
+    const svgHeight = Math.max(600, rect.height);
+
+    // Generate SVG content based on the current groups and connections
+    const groupElements = groups.map((group, index) => {
+      const x = 50 + (index % 2) * 350;
+      const y = 50 + Math.floor(index / 2) * 200;
+
+      const componentElements = group.components.map((component, compIndex) => {
+        const compX = x + 20;
+        const compY = y + 60 + compIndex * 40;
+        return `
+          <rect x="${compX}" y="${compY}" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1" rx="4"/>
+          <text x="${compX + 60}" y="${compY + 20}" text-anchor="middle" font-family="Arial" font-size="10" fill="#374151">${component.name}</text>
+        `;
+      }).join('');
+
+      return `
+        <rect x="${x}" y="${y}" width="300" height="150" fill="white" stroke="#6366f1" stroke-width="2" rx="8"/>
+        <text x="${x + 150}" y="${y + 25}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="#374151">${group.name}</text>
+        ${componentElements}
+      `;
+    }).join('');
+
+    // Generate connection lines
+    const connectionElements = connections.map((conn, index) => {
+      const fromGroup = groups.find(g => g.name === conn.from);
+      const toGroup = groups.find(g => g.name === conn.to);
+      if (!fromGroup || !toGroup) return '';
+
+      const fromIndex = groups.indexOf(fromGroup);
+      const toIndex = groups.indexOf(toGroup);
+      const fromX = 200 + (fromIndex % 2) * 350;
+      const fromY = 125 + Math.floor(fromIndex / 2) * 200;
+      const toX = 200 + (toIndex % 2) * 350;
+      const toY = 125 + Math.floor(toIndex / 2) * 200;
+
+      return `
+        <line x1="${fromX}" y1="${fromY}" x2="${toX}" y2="${toY}" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowhead)"/>
+        <text x="${(fromX + toX) / 2}" y="${(fromY + toY) / 2 - 5}" text-anchor="middle" font-family="Arial" font-size="10" fill="#6366f1">${conn.label || ''}</text>
+      `;
+    }).join('');
+
+    const svgData = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1"/>
+          </marker>
+        </defs>
+        <rect width="100%" height="100%" fill="white"/>
+        <text x="${svgWidth / 2}" y="30" text-anchor="middle" font-family="Arial" font-size="20" font-weight="bold" fill="#1f2937">System Architecture Diagram</text>
+        <text x="${svgWidth / 2}" y="50" text-anchor="middle" font-family="Arial" font-size="12" fill="#6b7280">Generated on ${new Date().toLocaleDateString()}</text>
+        ${groupElements}
+        ${connectionElements}
+      `;
+
+    // Convert SVG to blob and download
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(svgBlob);
+
+    // Create download link
+    const link = document.createElement('a');
+    link.download = `architecture-diagram-${new Date().toISOString().split('T')[0]}.svg`;
+    link.href = url;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [groups, connections]);
+
   // Floating toolbar
   const Toolbar = () => (
-    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-white/90 rounded-full shadow-lg px-4 py-2 border border-gray-200 backdrop-blur">
-      <button className="px-3 py-1 text-sm font-medium rounded-full hover:bg-blue-100 transition-colors">
-        Zoom In
-      </button>
-      <button className="px-3 py-1 text-sm font-medium rounded-full hover:bg-blue-100 transition-colors">
-        Zoom Out
-      </button>
-      <button className="px-3 py-1 text-sm font-medium rounded-full hover:bg-blue-100 transition-colors">
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-blue-600 rounded-full shadow-lg px-4 py-2 border border-blue-700 backdrop-blur">
+      <button
+        onClick={exportAsImage}
+        className="px-3 py-1 text-sm font-medium rounded-full text-white hover:bg-blue-700 hover:shadow-md transition-all duration-200 flex items-center gap-2 cursor-pointer"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
         Export
       </button>
     </div>
   );
 
+  // Single Toggle Button Component
+  const ToggleButton = () => (
+    <button
+      className="fixed top-6 left-6 z-50 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-200 flex items-center justify-center"
+      onClick={onToggleSidebar}
+      aria-label={sidebarOpen ? "Close chat" : "Open chat"}
+    >
+      {sidebarOpen ? (
+        <X className="w-6 h-6" />
+      ) : (
+        <MessageCircle className="w-6 h-6" />
+      )}
+    </button>
+  );
+
+  // Listen for delete-group event
+  useEffect(() => {
+    const handleDeleteGroup = (e: any) => {
+      const groupName = e.detail.groupName;
+      const updatedGroups = localGroups.filter(g => g.name !== groupName);
+      const updatedConnections = localConnections.filter(conn => conn.from !== groupName && conn.to !== groupName);
+      setLocalGroups(updatedGroups);
+      setLocalConnections(updatedConnections);
+      if (onGroupsChange) onGroupsChange(updatedGroups);
+    };
+    window.addEventListener('delete-group', handleDeleteGroup);
+    return () => window.removeEventListener('delete-group', handleDeleteGroup);
+  }, [localGroups, localConnections, onGroupsChange]);
+
   // Show a message when no groups are present
   if (groups.length === 0) {
     return (
-      <div className="w-full h-full bg-gradient-to-br from-gray-50 to-blue-100 flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center relative">
+        {/* Toggle Button */}
+        {onToggleSidebar && <ToggleButton />}
+
         <div className="text-center">
           <div className="text-6xl mb-4">🏗️</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
@@ -425,37 +587,33 @@ function SystemDesignCanvasInner({
   }
 
   return (
-    <div className="w-full h-full relative" style={edgeOverlayStyle}>
-      {/*
-        Z-INDEX FIX: The style above ensures that the .react-flow__edges layer overlays on top of all nodes and containers.
-        If you use custom node styles, ensure their z-index is lower than the edge layer.
-      */}
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        nodeTypes={nodeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.1 }}
-        className=""
-      >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          color="#cbd5e1"
-        />
-        <Controls />
-        <MiniMap
-          nodeColor="#3b82f6"
-          nodeStrokeWidth={3}
-          zoomable
-          pannable
-        />
-      </ReactFlow>
-      <Toolbar />
+    <div className="relative w-full h-full">
+      {/* React Flow Diagram */}
+      <ReactFlowProvider>
+        <div className="w-full h-full relative">
+          {/* Toggle Button */}
+          {onToggleSidebar && <ToggleButton />}
+
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onConnect={onConnect}
+            nodeTypes={nodeTypes}
+            fitView
+            minZoom={0.2}
+            maxZoom={2}
+            className="react-flow"
+            proOptions={{ hideAttribution: true }}
+          >
+            <Background variant={BackgroundVariant.Dots} gap={24} size={1.5} color="#c7d2fe" />
+            <MiniMap nodeColor={() => '#6366f1'} nodeStrokeWidth={3} zoomable pannable />
+            <Controls position="bottom-right" showInteractive={false} />
+          </ReactFlow>
+          <Toolbar />
+        </div>
+      </ReactFlowProvider>
     </div>
   );
 }

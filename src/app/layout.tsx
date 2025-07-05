@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import {
+  ClerkProvider,
+  SignedIn,
+  UserButton,
+} from "@clerk/nextjs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +18,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "InfraAI",
+  title: "InfraAI - AI-powered system design assistant",
   description: "AI-powered system design assistant",
 };
 
@@ -23,13 +28,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 transition-colors duration-200`}
-        style={{ fontFamily: 'var(--font-geist-sans), Inter, sans-serif' }}
-      >
-        {children}
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50 transition-colors duration-200`}
+          style={{ fontFamily: 'var(--font-geist-sans), Inter, sans-serif' }}
+        >
+          {children}
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }

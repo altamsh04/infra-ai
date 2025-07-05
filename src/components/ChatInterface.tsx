@@ -1,37 +1,74 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUser, SignIn, UserButton } from '@clerk/nextjs';
+import { DesignPrompt } from './DesignPrompts';
+import { AIResponse } from '@/lib/ai';
 
 interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
   timestamp: Date;
+  isSystemDesign?: boolean;
 }
 
 interface ChatInterfaceProps {
-  onSystemRequest: (request: string) => Promise<void>;
+  onSystemRequest: (request: string) => Promise<AIResponse>;
   isLoading: boolean;
   explanation?: string;
 }
 
-export function ChatInterface({ 
-  onSystemRequest, 
-  isLoading, 
-  explanation 
+// Typing animation component for AI responses
+function TypingMessage({ content, onDone }: { content: string; onDone?: () => void }) {
+  const [displayed, setDisplayed] = useState('');
+  const indexRef = useRef(0);
+
+  useEffect(() => {
+    setDisplayed('');
+    indexRef.current = 0;
+    if (!content) return;
+    const interval = setInterval(() => {
+      setDisplayed((prev) => {
+        const next = content.slice(0, indexRef.current + 1);
+        if (next.length === content.length) {
+          clearInterval(interval);
+          if (onDone) onDone();
+        }
+        indexRef.current++;
+        return next;
+      });
+    }, 12); // Adjust speed here (ms per character)
+    return () => clearInterval(interval);
+  }, [content, onDone]);
+
+  return <span>{displayed}</span>;
+}
+
+export function ChatInterface({
+  onSystemRequest,
+  isLoading,
+  explanation
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm your AI system design assistant. Describe your system requirements and I'll help you design the perfect architecture. For example: 'Build a highly scalable URL shortener with cache, auth, and database failover'",
+      content: "Hello! I'm InfraAI, developed by Altamsh Bairagdar. I'm your AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nWhat would you like to discuss today?",
       role: 'assistant',
       timestamp: new Date(),
+      isSystemDesign: false,
     },
   ]);
   const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { isSignedIn } = useUser();
+  const [showSignIn, setShowSignIn] = useState(false);
+  const [animatingId, setAnimatingId] = useState<string | null>(null);
+
+  // Character limit constant
+  const MAX_CHARACTERS = 500;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,23 +78,16 @@ export function ChatInterface({
     scrollToBottom();
   }, [messages]);
 
-  useEffect(() => {
-    if (explanation) {
-      setMessages(prev => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          content: explanation,
-          role: 'assistant',
-          timestamp: new Date(),
-        },
-      ]);
-    }
-  }, [explanation]);
+  const handlePromptSelect = (prompt: string) => {
+    setInputValue(prompt);
+  };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
+  const handleSubmit = async () => {
+    if (!inputValue.trim() || isLoading || inputValue.length > MAX_CHARACTERS) return;
+    if (!isSignedIn) {
+      setShowSignIn(true);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -67,20 +97,54 @@ export function ChatInterface({
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = inputValue;
     setInputValue('');
 
     try {
-      await onSystemRequest(inputValue);
+      const aiResponse = await onSystemRequest(currentInput);
+      const newId = (Date.now() + 1).toString();
+      setAnimatingId(newId);
+      // Add AI response to messages
+      setMessages(prev => [
+        ...prev,
+        {
+          id: newId,
+          content: aiResponse.message,
+          role: 'assistant',
+          timestamp: new Date(),
+          isSystemDesign: aiResponse.isSystemDesign,
+        },
+      ]);
     } catch (error) {
+      console.error('Error during AI request:', error);
+
+      let errorMessage = 'I apologize, but I encountered an error. Please try again.';
+
+      if (error instanceof Error) {
+        if (error.message.includes('API key')) {
+          errorMessage = 'It looks like there\'s an issue with the API configuration. Please check the API key setup.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'I\'m having trouble connecting right now. Please check your internet connection and try again.';
+        }
+      }
+
       setMessages(prev => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
-          content: 'Sorry, I encountered an error while analyzing your request. Please try again.',
+          content: errorMessage,
           role: 'assistant',
           timestamp: new Date(),
+          isSystemDesign: false,
         },
       ]);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit();
     }
   };
 
@@ -88,65 +152,104 @@ export function ChatInterface({
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
+  // Character count and validation
+  const characterCount = inputValue.length;
+  const isOverLimit = characterCount > MAX_CHARACTERS;
+
   return (
-    <div className="flex flex-col h-full bg-gradient-to-br from-white to-blue-50 border-r border-gray-200 shadow-xl rounded-l-2xl overflow-hidden" style={{ fontFamily: 'var(--font-geist-sans), Inter, sans-serif' }}>
+    <div className="flex flex-col h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 border-r border-gray-200 shadow-2xl overflow-hidden" style={{ width: 420, maxWidth: '95vw' }}>
       {/* Header */}
-      <div className="sticky top-0 z-10 p-5 border-b border-gray-100 bg-white/80 backdrop-blur flex flex-col gap-1 shadow-sm">
-        <div className="flex items-center gap-2">
-          <Bot className="w-6 h-6 text-blue-600" />
-          <h2 className="font-bold text-lg text-gray-900 tracking-tight">System Design Assistant</h2>
+      {/* <div className="px-6 py-4 border-b border-gray-200/80 bg-white/95 backdrop-blur-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-800">AI Assistant</h2>
+              <p className="text-sm text-gray-500">System Design & Chat</p>
+            </div>
+          </div>
+          {isSignedIn && (
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8"
+                }
+              }}
+            />
+          )}
         </div>
-        <p className="text-sm text-gray-500 mt-1">
-          Describe your system requirements and get AI-powered architecture recommendations
-        </p>
-      </div>
+      </div> */}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4 bg-transparent">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              'flex gap-3',
-              message.role === 'user' ? 'justify-end' : 'justify-start'
-            )}
-          >
-            {message.role === 'assistant' && (
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 shadow">
-                <Bot className="w-5 h-5 text-blue-600" />
-              </div>
-            )}
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 bg-transparent scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+        {messages.map((message, idx) => {
+          const isLatestAssistant =
+            message.role === 'assistant' &&
+            idx === messages.length - 1 &&
+            message.id === animatingId;
+          return (
             <div
+              key={message.id}
               className={cn(
-                'max-w-[75%] rounded-2xl px-5 py-3 shadow-md',
-                message.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-md'
-                  : 'bg-white text-gray-900 rounded-bl-md border border-gray-100'
+                'flex gap-3 items-start',
+                message.role === 'user' ? 'justify-end' : 'justify-start'
               )}
             >
-              <p className="text-base whitespace-pre-wrap leading-relaxed">{message.content}</p>
-              <p className={cn(
-                'text-xs mt-2 text-right',
-                message.role === 'user' ? 'text-blue-100' : 'text-gray-400'
-              )}>
-                {formatTime(message.timestamp)}
-              </p>
-            </div>
-            {message.role === 'user' && (
-              <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 shadow">
-                <User className="w-5 h-5 text-gray-600" />
+              {message.role === 'assistant' && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-md mt-1">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+              )}
+              <div className="flex flex-col gap-1 max-w-[80%]">
+                <div
+                  className={cn(
+                    'rounded-2xl px-4 py-3 shadow-sm border',
+                    message.role === 'user'
+                      ? 'bg-blue-600 text-white border-blue-500 rounded-br-md self-end'
+                      : message.isSystemDesign
+                        ? 'bg-gradient-to-r from-green-50 to-blue-50 text-gray-900 border-green-200 rounded-bl-md'
+                        : 'bg-white text-gray-900 border-gray-200 rounded-bl-md'
+                  )}
+                >
+                  <p className="text-[15px] whitespace-pre-wrap leading-relaxed">
+                    {isLatestAssistant ? (
+                      <TypingMessage content={message.content} onDone={() => setAnimatingId(null)} />
+                    ) : (
+                      message.content
+                    )}
+                  </p>
+                  {message.isSystemDesign && (
+                    <div className="mt-2 text-xs text-green-700 font-medium">
+                      🏗️ System Design Generated
+                    </div>
+                  )}
+                </div>
+                <p className={cn(
+                  'text-xs px-1',
+                  message.role === 'user' ? 'text-gray-400 text-right' : 'text-gray-400 text-left'
+                )}>
+                  {formatTime(message.timestamp)}
+                </p>
               </div>
-            )}
-          </div>
-        ))}
-        {isLoading && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 shadow">
-              <Bot className="w-5 h-5 text-blue-600" />
+              {message.role === 'user' && (
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center flex-shrink-0 shadow-md mt-1">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              )}
             </div>
-            <div className="bg-white rounded-2xl px-5 py-3 shadow-md border border-gray-100 flex items-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
-              <span className="text-base text-gray-600">Analyzing your request...</span>
+          );
+        })}
+
+        {isLoading && (
+          <div className="flex gap-3 items-start justify-start">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center flex-shrink-0 shadow-md mt-1">
+              <Bot className="w-4 h-4 text-white" />
+            </div>
+            <div className="bg-white rounded-2xl px-4 py-3 shadow-sm border border-gray-200 rounded-bl-md flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+              <span className="text-[15px] text-gray-600">Thinking...</span>
             </div>
           </div>
         )}
@@ -154,27 +257,103 @@ export function ChatInterface({
       </div>
 
       {/* Input */}
-      <div className="sticky bottom-0 z-10 p-5 border-t border-gray-100 bg-white/90 backdrop-blur">
-        <form onSubmit={handleSubmit} className="flex gap-3 items-center">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="Describe your system requirements..."
-            className="flex-1 px-5 py-3 rounded-2xl border border-gray-200 bg-white text-base text-gray-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent shadow-sm placeholder:text-gray-400"
-            disabled={isLoading}
-            autoFocus
-          />
+      <div className="sticky bottom-0 z-10 px-6 pt-4 pb-2 bg-white/95 backdrop-blur-sm">
+        <style jsx>{`
+          textarea::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
+        <div className="flex gap-3 items-end mb-2">
+          <div className="flex-1 relative">
+            <textarea
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Ask me about system design..."
+              className={cn(
+                "w-full px-3 py-3 pr-12 rounded-2xl border bg-white text-[14px] text-gray-900 focus:outline-none focus:ring-2 focus:border-transparent shadow-sm placeholder:text-gray-400 resize-none overflow-hidden",
+                isOverLimit 
+                  ? "border-red-300 focus:ring-red-400" 
+                  : "border-gray-200 focus:ring-blue-400"
+              )}
+              disabled={isLoading}
+              autoFocus
+              rows={1}
+              style={{
+                height: '48px',
+                minHeight: '48px',
+                maxHeight: '128px',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+                marginBottom: '0px',
+                paddingBottom: '12px'
+              }}
+              onInput={(e) => {
+                const target = e.target as HTMLTextAreaElement;
+                target.style.height = '48px';
+                const newHeight = Math.min(Math.max(target.scrollHeight, 48), 128);
+                target.style.height = `${newHeight}px`;
+                if (target.scrollHeight > 128) {
+                  target.style.overflowY = 'auto';
+                } else {
+                  target.style.overflowY = 'hidden';
+                }
+              }}
+            />
+            {/* Character counter */}
+            <div className="absolute bottom-1 right-3 text-xs font-medium">
+              <span className={cn(
+                "transition-colors duration-200",
+                isOverLimit ? "text-red-500" : "text-gray-400"
+              )}>
+                {characterCount}/{MAX_CHARACTERS}
+              </span>
+            </div>
+          </div>
           <button
-            type="submit"
-            disabled={!inputValue.trim() || isLoading}
-            className="px-5 py-3 rounded-2xl bg-blue-600 text-white font-semibold text-base shadow-md hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            type="button"
+            onClick={handleSubmit}
+            disabled={!inputValue.trim() || isLoading || isOverLimit}
+            className="w-12 h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0"
           >
-            <Send className="w-5 h-5" />
-            <span className="hidden sm:inline">Send</span>
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </button>
-        </form>
+        </div>
+
+        {/* Warning message when over limit */}
+        {isOverLimit && (
+          <div className="mb-2 text-xs text-red-500 font-medium">
+            Message is too long. Please reduce by {characterCount - MAX_CHARACTERS} characters.
+          </div>
+        )}
+
+        {/* Footer text */}
+        <p className="text-xs text-gray-500 text-left">
+          InfraAI can make mistakes in design, Developed by <a href="https://www.github.com/altamsh04" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">@altamsh04</a>
+        </p>
       </div>
+
+      {/* Sign In Modal */}
+      {showSignIn && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 relative max-w-md w-full mx-4">
+            <button
+              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+              onClick={() => setShowSignIn(false)}
+              style={{ zIndex: 10000 }}
+            >
+              <X className="w-4 h-4 text-gray-600" />
+            </button>
+            <div className="pt-4">
+              <SignIn afterSignInUrl={typeof window !== 'undefined' ? window.location.href : '/'} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-} 
+}

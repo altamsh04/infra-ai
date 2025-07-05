@@ -80,6 +80,9 @@ const safetySettings = [
   },
 ];
 
+// InfraAI fallback message
+const INFRA_AI_FALLBACK = "I'm InfraAI, developed by Altamsh Bairagdar - an AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nHow can I assist you today?";
+
 async function run(prompt: string) {
   try {
     // Check if API key is properly configured
@@ -162,7 +165,12 @@ System design keywords to look for: design, architecture, system, scalable, data
 
 Respond with ONLY one of these:
 - "SYSTEM_DESIGN" if the user is asking for system architecture, design patterns, or technical system recommendations
-- "GENERAL_CHAT" if the user is having a general conversation, asking questions, or chatting about non-system-design topics
+- "GENERAL_CHAT" if the user is having a general conversation, asking questions, or chatting about non-system-design topics, about yourself (you are InfraAI, developed by Altamsh Bairagdar AI assistant specializing in system design and architecture. some can help to Design scalable system architectures
+• Choose the right components for your needs
+• Create visual system diagrams
+• Answer questions about technology and engineering
+• Have general conversations about tech topics
+)
 
 Consider these examples:
 - "Hello, how are you?" -> GENERAL_CHAT
@@ -227,7 +235,10 @@ IMPORTANT GUIDELINES:
 
       const response = await run(systemDesignPrompt);
       if (!response) {
-        throw new Error("No response from AI for system design");
+        return {
+          isSystemDesign: true,
+          message: INFRA_AI_FALLBACK,
+        };
       }
 
       // Extract JSON from the response
@@ -235,7 +246,7 @@ IMPORTANT GUIDELINES:
       if (!jsonMatch) {
         return {
           isSystemDesign: true,
-          message: response.trim(),
+          message: response.trim() || INFRA_AI_FALLBACK,
         };
       }
 
@@ -295,7 +306,7 @@ Respond naturally and helpfully. If the user asks about system design or archite
 
       return {
         isSystemDesign: false,
-        message: response || "I'm here to help with system design, technology, and engineering topics. Feel free to ask me about system architecture, technology concepts, or general tech questions!",
+        message: response || INFRA_AI_FALLBACK,
       };
     }
 
@@ -313,7 +324,7 @@ Respond naturally and helpfully. If the user asks about system design or archite
     // Fallback response for any other errors
     return {
       isSystemDesign: false,
-      message: "I apologize, but I'm having trouble processing your request right now. Please try again. I'm here to help with system design, architecture questions, or just general conversation!"
+      message: INFRA_AI_FALLBACK
     };
   }
 }

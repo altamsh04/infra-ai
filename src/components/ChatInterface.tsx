@@ -13,6 +13,7 @@ interface Message {
   role: 'user' | 'assistant';
   timestamp: Date;
   isSystemDesign?: boolean;
+  showDesignPrompts?: boolean; // New field to indicate if this message should show design prompts
 }
 
 interface ChatInterfaceProps {
@@ -55,10 +56,11 @@ export function ChatInterface({
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm InfraAI, developed by Altamsh Bairagdar. I'm your AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nWhat would you like to discuss today?",
+      content: "Hello! I'm InfraAI, developed by Altamsh Bairagdar. I'm your AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nTry one of these popular system design examples 👉",
       role: 'assistant',
       timestamp: new Date(),
       isSystemDesign: false,
+      showDesignPrompts: true, // Enable design prompts for the first message
     },
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -202,7 +204,10 @@ export function ChatInterface({
                   <Bot className="w-4 h-4 text-white" />
                 </div>
               )}
-              <div className="flex flex-col gap-1 max-w-[80%]">
+              <div className={cn(
+                "flex flex-col gap-1",
+                message.showDesignPrompts ? "max-w-[95%]" : "max-w-[80%]"
+              )}>
                 <div
                   className={cn(
                     'rounded-2xl px-4 py-3 shadow-sm border',
@@ -226,6 +231,42 @@ export function ChatInterface({
                     </div>
                   )}
                 </div>
+                
+                {/* Render Design Prompts if this message should show them */}
+                {message.showDesignPrompts && (
+                  <div className="mt-3 w-full max-w-full">
+                    <div className="flex flex-col gap-2">
+                      <div className="grid grid-cols-1 gap-2">
+                        {[
+                          "Design a highly scalable URL shortener like bit.ly that can handle 100M URLs per day with Redis caching, database sharding, custom domains, analytics, and rate limiting",
+                          "Build a distributed e-commerce system supporting 1M+ products with inventory management, payment processing, order fulfillment, recommendation engine, and real-time notifications",
+                          "Create a real-time chat application like WhatsApp with message delivery, group chats, file sharing, end-to-end encryption, offline support, and push notifications for 10M+ users"
+                        ].map((prompt, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handlePromptSelect(prompt)}
+                            className="relative text-left p-3 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 hover:border-gray-300 transition-all duration-200 text-sm text-gray-700 hover:text-gray-900 group cursor-pointer"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 pr-6">
+                                <div className="font-medium text-xs text-blue-600 mb-1">
+                                  System Design {index + 1}
+                                </div>
+                                <div className="line-clamp-2 text-xs leading-relaxed">
+                                  {prompt.length > 100 ? prompt.substring(0, 100) + "..." : prompt}
+                                </div>
+                              </div>
+                              <div className="absolute top-2 right-2 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
+                                <Send className="w-3 h-3 text-blue-600" />
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
                 <p className={cn(
                   'text-xs px-1',
                   message.role === 'user' ? 'text-gray-400 text-right' : 'text-gray-400 text-left'
@@ -314,7 +355,7 @@ export function ChatInterface({
             type="button"
             onClick={handleSubmit}
             disabled={!inputValue.trim() || isLoading || isOverLimit}
-            className="w-12 h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0"
+            className="w-12 h-12 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center flex-shrink-0 cursor-pointer"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

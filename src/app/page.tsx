@@ -1,14 +1,14 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ChatInterface } from '@/components/ChatInterface';
 import { SystemDesignCanvas } from '@/components/SystemDesignCanvas';
 import systemDesignData from './system-design-components.json';
 import { analyzeSystemRequest, SystemComponent, ComponentGroup, AIRecommendation, AIResponse } from '@/lib/ai';
 import ChatSidebar from '@/components/ChatSidebar';
 import { MessageCircle, X, PanelRight, PanelLeft } from 'lucide-react';
-import { SignedIn, UserButton } from '@clerk/nextjs';
+import { SignedIn, UserButton, useUser } from '@clerk/nextjs';
 
 export default function Home() {
   const [groups, setGroups] = useState<ComponentGroup[]>([]);
@@ -17,6 +17,10 @@ export default function Home() {
   const [explanation, setExplanation] = useState<string | undefined>(undefined);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [systemDesignTitle, setSystemDesignTitle] = useState<string | null>(null);
+  const { isSignedIn, user } = useUser();
+  const [creditError, setCreditError] = useState<string | null>(null);
+  const [credits, setCredits] = useState<number | null>(null);
+  const creditsRef = useRef<number | null>(null);
 
   useEffect(() => {
     // Trigger resize for React Flow when sidebar toggles
@@ -29,39 +33,88 @@ export default function Home() {
   }, [groups]);
 
   const handleSystemRequest = async (request: string): Promise<AIResponse> => {
-    console.log('Handling system request:', request);
+    setCreditError(null);
+    if (!isSignedIn) {
+      return {
+        message: 'Please sign in to use system design features.',
+        isSystemDesign: false,
+      };
+    }
     setIsLoading(true);
     setExplanation(undefined);
     try {
-      const allComponents: SystemComponent[] = systemDesignData.components;
-      console.log('Available components count:', allComponents.length);
-
-      const aiResult = await analyzeSystemRequest(request, allComponents);
-      // If system design, update canvas
-      if (aiResult.isSystemDesign && aiResult.recommendation) {
-        setGroups(aiResult.recommendation.groups);
-        setConnections(aiResult.recommendation.connections || []);
-        setExplanation(aiResult.recommendation.explanation);
-        setSystemDesignTitle(aiResult.recommendation.title || null); // Use the AI response title
+      const res = await fetch('/api/system-design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request }),
+      });
+      const data = await res.json();
+      if (typeof data.credits === 'number') {
+        setCredits(data.credits);
+        creditsRef.current = data.credits;
       }
-      return aiResult;
-    } catch (error) {
-      console.error('Error in handleSystemRequest:', error);
-      setExplanation('Sorry, I could not analyze your request. Please try again.');
+      if (!res.ok) {
+        if (data.error && data.error.includes('credits')) {
+          setCreditError(data.error);
+        }
+        return {
+          message: data.error || 'Sorry, could not process your request.',
+          isSystemDesign: false,
+        };
+      }
+      // Integrate actual AI response here
+      if (data.isSystemDesign && data.recommendation) {
+        setGroups(data.recommendation.groups);
+        setConnections(data.recommendation.connections || []);
+        setExplanation(data.recommendation.explanation);
+        setSystemDesignTitle(data.recommendation.title || null);
+      }
       return {
-        message: 'Sorry, I could not analyze your request. Please try again.',
-        isSystemDesign: false
+        message: data.message || 'System design request allowed.',
+        isSystemDesign: !!data.isSystemDesign,
+      };
+    } catch (error) {
+      setCreditError('Sorry, there was a problem processing your request.');
+      return {
+        message: 'Sorry, there was a problem processing your request.',
+        isSystemDesign: false,
       };
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Fetch credits on mount and when user logs in
+  useEffect(() => {
+    const fetchCredits = async () => {
+      if (!isSignedIn) return;
+      const res = await fetch('/api/system-design', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request: '' }), // empty request, just to get credits
+      });
+      const data = await res.json();
+      if (typeof data.credits === 'number') {
+        setCredits(data.credits);
+        creditsRef.current = data.credits;
+      }
+    };
+    fetchCredits();
+  }, [isSignedIn, user?.id]);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       {/* User profile in top-right corner */}
-      <div className="fixed top-6 right-6 z-50">
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-2">
         <SignedIn>
+          {typeof credits === 'number' && (
+            <span
+              className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-sm transition-colors duration-200 ${credits === 0 ? 'bg-red-100 text-gray-700 border-gray-300' : 'bg-green-100 text-gray-700 border-gray-300'}`}
+              style={{ marginRight: 8 }}
+            >
+              Credits: {credits}
+            </span>
+          )}
           <UserButton />
         </SignedIn>
       </div>
@@ -89,7 +142,12 @@ export default function Home() {
           {sidebarOpen ? <PanelLeft className="w-6 h-6" /> : <PanelRight className="w-6 h-6" />}
           <span className="ml-2 font-semibold text-base text-gray-700 select-none">InfraAI</span>
         </button>
-        <SystemDesignCanvas groups={groups} connections={connections} systemDesignTitle={systemDesignTitle} />
+        {creditError && (
+          <div className="fixed top-20 right-6 z-50 bg-red-100 text-red-700 px-4 py-2 rounded shadow">
+            {creditError}
+          </div>
+        )}
+        <SystemDesignCanvas groups={groups} connections={connections} systemDesignTitle={systemDesignTitle} credits={credits} />
       </div>
     </div>
   );

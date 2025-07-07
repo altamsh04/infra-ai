@@ -25,6 +25,7 @@ import { ComponentNode } from './ComponentNode';
 import { IconType } from 'react-icons';
 import { FaReact, FaDatabase, FaServer, FaKey, FaGithub, FaGoogle, FaLinkedin, FaStripe, FaCloud, FaCogs } from 'react-icons/fa';
 import ELK from 'elkjs/lib/elk.bundled.js';
+import { useUser } from '@clerk/nextjs';
 
 // Group name to icon mapping
 const groupIconMap: Record<string, any> = {
@@ -240,6 +241,7 @@ interface SystemDesignCanvasProps {
   sidebarOpen?: boolean;        // New prop
   onToggleSidebar?: () => void; // New prop
   systemDesignTitle?: string | null; // Add this line
+  credits?: number | null; // Add this line
 }
 
 type GroupConnection = { from: string; to: string; label?: string };
@@ -289,11 +291,13 @@ function SystemDesignCanvasInner({
   sidebarOpen,
   onToggleSidebar,
   systemDesignTitle,
+  credits,
 }: SystemDesignCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [localGroups, setLocalGroups] = useState(groups);
   const [localConnections, setLocalConnections] = useState(connections);
+  const { isSignedIn } = useUser();
 
   // Layout configuration
   const groupSpacingX = 450;
@@ -588,6 +592,16 @@ function SystemDesignCanvasInner({
 
   return (
     <div className="relative w-full h-full">
+      {/* Credits badge in top-right of canvas */}
+      {isSignedIn && typeof credits === 'number' && (
+        <div className="absolute top-6 right-6 z-40 flex items-center">
+          <span
+            className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-sm transition-colors duration-200 ${credits === 0 ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
+          >
+            Credits: {credits}
+          </span>
+        </div>
+      )}
       {/* React Flow Diagram */}
       <ReactFlowProvider>
         <div className="w-full h-full relative">

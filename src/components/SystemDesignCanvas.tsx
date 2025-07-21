@@ -593,7 +593,7 @@ function SystemDesignCanvasInner({
   return (
     <div className="relative w-full h-full">
       {/* Credits badge in top-right of canvas */}
-      {isSignedIn && typeof credits === 'number' && (
+      {/* {isSignedIn && typeof credits === 'number' && (
         <div className="absolute top-6 right-6 z-40 flex items-center">
           <span
             className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-sm transition-colors duration-200 ${credits === 0 ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
@@ -601,7 +601,7 @@ function SystemDesignCanvasInner({
             Credits: {credits}
           </span>
         </div>
-      )}
+      )} */}
       {/* React Flow Diagram */}
       <ReactFlowProvider>
         <div className="w-full h-full relative">

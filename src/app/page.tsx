@@ -8,7 +8,7 @@ import systemDesignData from './system-design-components.json';
 import { analyzeSystemRequest, SystemComponent, ComponentGroup, AIRecommendation, AIResponse } from '@/lib/ai';
 import ChatSidebar from '@/components/ChatSidebar';
 import { MessageCircle, X, PanelRight, PanelLeft } from 'lucide-react';
-import { SignedIn, UserButton, useUser } from '@clerk/nextjs';
+import { SignedIn, useUser } from '@clerk/nextjs';
 
 export default function Home() {
   const [groups, setGroups] = useState<ComponentGroup[]>([]);
@@ -88,10 +88,9 @@ export default function Home() {
   useEffect(() => {
     const fetchCredits = async () => {
       if (!isSignedIn) return;
-      const res = await fetch('/api/system-design', {
+      const res = await fetch('/api/credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ request: '' }), // empty request, just to get credits
       });
       const data = await res.json();
       if (typeof data.credits === 'number') {
@@ -115,7 +114,6 @@ export default function Home() {
               Credits: {credits}
             </span>
           )}
-          <UserButton />
         </SignedIn>
       </div>
       {/* Chat Sidebar (toggleable) */}

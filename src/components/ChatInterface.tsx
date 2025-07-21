@@ -212,10 +212,9 @@ export function ChatInterface({
                 <h2 className="text-lg font-semibold text-gray-800">InfraAI</h2>
               </div>
               <div className="flex items-center gap-1 text-sm text-gray-500">
-                <MessageCircle className="w-3 h-3" />
                 <span>System Design & Chat</span>
               </div>
-            </div>
+            </div> 
           </div>
           {isSignedIn && (
             <UserButton 
@@ -295,20 +294,14 @@ export function ChatInterface({
                           {
                             title: "URL Shortener",
                             prompt: "Design a highly scalable URL shortener like bit.ly that can handle 100M URLs per day with Redis caching, database sharding, custom domains, analytics, and rate limiting",
-                            icon: "🔗",
-                            difficulty: "Intermediate"
                           },
                           {
                             title: "E-commerce Platform",
                             prompt: "Build a distributed e-commerce system supporting 1M+ products with inventory management, payment processing, order fulfillment, recommendation engine, and real-time notifications",
-                            icon: "🛒",
-                            difficulty: "Advanced"
                           },
                           {
                             title: "Chat Application",
                             prompt: "Create a real-time chat application like WhatsApp with message delivery, group chats, file sharing, end-to-end encryption, offline support, and push notifications for 10M+ users",
-                            icon: "💬",
-                            difficulty: "Expert"
                           }
                         ].map((item, index) => (
                           <button
@@ -320,19 +313,10 @@ export function ChatInterface({
                               <div className="flex-1 pr-6">
                                 <div className="flex items-center justify-between mb-2">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-base">{item.icon}</span>
                                     <span className="font-semibold text-xs text-blue-700">
                                       {item.title}
                                     </span>
                                   </div>
-                                  <span className={cn(
-                                    "text-xs px-2 py-0.5 rounded-full font-medium",
-                                    item.difficulty === "Intermediate" ? "bg-yellow-100 text-yellow-700" :
-                                    item.difficulty === "Advanced" ? "bg-orange-100 text-orange-700" :
-                                    "bg-red-100 text-red-700"
-                                  )}>
-                                    {item.difficulty}
-                                  </span>
                                 </div>
                                 <div className="line-clamp-2 text-xs leading-relaxed text-gray-600">
                                   {item.prompt.length > 120 ? item.prompt.substring(0, 120) + "..." : item.prompt}

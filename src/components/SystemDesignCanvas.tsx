@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -19,13 +19,21 @@ import ReactFlow, {
   Handle,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
-import { User, Network, Database, Server, Shield, Settings, Cloud, Code, Zap, Globe, Trash, MessageCircle, X } from 'lucide-react';
-import { SystemComponent, ComponentGroup } from '@/lib/ai';
-import { ComponentNode } from './ComponentNode';
-import { IconType } from 'react-icons';
-import { FaReact, FaDatabase, FaServer, FaKey, FaGithub, FaGoogle, FaLinkedin, FaStripe, FaCloud, FaCogs } from 'react-icons/fa';
-import ELK from 'elkjs/lib/elk.bundled.js';
-import { useUser } from '@clerk/nextjs';
+import { User, Network, Database, Server, Shield, Settings, Cloud, Code, Zap, Globe, Trash, MessageCircle, X, Upload, Download, ChevronDown } from 'lucide-react';
+
+// Mock types for the components (since we don't have the actual imports)
+interface SystemComponent {
+  id: string;
+  name: string;
+  icon?: string;
+}
+
+interface ComponentGroup {
+  name: string;
+  components: SystemComponent[];
+}
+
+type GroupConnection = { from: string; to: string; label?: string };
 
 // Group name to icon mapping
 const groupIconMap: Record<string, any> = {
@@ -92,27 +100,6 @@ function getGroupIcon(groupName?: string) {
   }
 
   return groupIconMap.default;
-}
-
-// Icon map for components (expand as needed)
-const componentIconMap: Record<string, IconType> = {
-  react: FaReact,
-  database: FaDatabase,
-  api: FaServer,
-  auth: FaKey,
-  github: FaGithub,
-  google: FaGoogle,
-  linkedin: FaLinkedin,
-  stripe: FaStripe,
-  cloud: FaCloud,
-  backend: FaServer,
-  cogs: FaCogs,
-};
-
-function getComponentIcon(icon?: string) {
-  if (!icon) return null;
-  const Icon = componentIconMap[icon.toLowerCase()];
-  return Icon ? <Icon className="w-5 h-5 mr-2" /> : null;
 }
 
 // Group Node Component (container) - Simple design with top-left label
@@ -238,79 +225,35 @@ interface SystemDesignCanvasProps {
   groups: ComponentGroup[];
   connections?: GroupConnection[];
   onGroupsChange?: (groups: ComponentGroup[]) => void;
-  sidebarOpen?: boolean;        // New prop
-  onToggleSidebar?: () => void; // New prop
-  systemDesignTitle?: string | null; // Add this line
-  credits?: number | null; // Add this line
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+  systemDesignTitle?: string | null;
+  credits?: number | null;
+  onImportDesign?: (imported: { groups: ComponentGroup[]; connections: GroupConnection[]; systemDesignTitle?: string | null }) => void;
 }
 
-type GroupConnection = { from: string; to: string; label?: string };
-
-async function getElkLayout(
-  groups: ComponentGroup[],
-  connections: GroupConnection[],
-  direction: string = 'RIGHT'
-): Promise<Record<string, { x: number; y: number }>> {
-  const elk = new ELK();
-  const elkGraph = {
-    id: 'root',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': direction,
-      'elk.layered.spacing.nodeNodeBetweenLayers': '80',
-      'elk.spacing.nodeNode': '40',
-    },
-    children: groups.map((group: ComponentGroup) => ({
-      id: group.name,
-      width: 380,
-      height: 260,
-    })),
-    edges: (connections || []).map((conn: GroupConnection, idx: number) => ({
-      id: `e${idx}`,
-      sources: [conn.from],
-      targets: [conn.to],
-    })),
-  };
-  const layout = await elk.layout(elkGraph);
-  const posMap: Record<string, { x: number; y: number }> = {};
-  if (layout.children) {
-    layout.children.forEach((node: any) => {
-      posMap[node.id] = {
-        x: node.x,
-        y: node.y,
-      };
-    });
-  }
-  return posMap;
-}
-
-function SystemDesignCanvasInner({
-  groups,
-  connections = [],
-  onGroupsChange,
-  sidebarOpen,
-  onToggleSidebar,
-  systemDesignTitle,
-  credits,
-}: SystemDesignCanvasProps) {
+function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
+  const { groups, connections = [], onGroupsChange, sidebarOpen, onToggleSidebar, systemDesignTitle, credits, onImportDesign } = props;
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [localGroups, setLocalGroups] = useState(groups);
   const [localConnections, setLocalConnections] = useState(connections);
-  const { isSignedIn } = useUser();
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Layout configuration
   const groupSpacingX = 450;
   const groupY = 150;
   const startX = 200;
 
-  // Component sizing constants - UPDATED to prevent overlap
+  // Component sizing constants
   const groupWidth = 380;
   const componentWidth = 280;
-  const componentHeight = 100; // Matches CustomComponentNode
+  const componentHeight = 100;
   const componentGap = 20;
-  const labelHeight = 70; // Space reserved for the top label (increased)
-  const verticalPadding = 20; // Additional padding below label
+  const labelHeight = 70;
+  const verticalPadding = 20;
 
   // Client node (placed to the left)
   const clientNode: Node = {
@@ -318,7 +261,7 @@ function SystemDesignCanvasInner({
     type: 'client',
     data: {},
     position: { x: 40, y: groupY + 50 },
-    draggable: true, // Make client node draggable
+    draggable: true,
   };
 
   // Combine all connections with the same from/to group into a single edge with a combined label
@@ -348,13 +291,13 @@ function SystemDesignCanvasInner({
     labelStyle: { fill: '#fff', fontWeight: '700' },
   }));
 
-  // Use ELK to layout group nodes
-  const [elkPositions, setElkPositions] = useState<Record<string, { x: number; y: number }>>({});
-  useEffect(() => {
-    getElkLayout(groups, connections, 'RIGHT').then(setElkPositions);
-  }, [groups, connections]);
+  // Mock ELK positions for demo
+  const elkPositions: Record<string, { x: number; y: number }> = {};
+  groups.forEach((group, index) => {
+    elkPositions[group.name] = { x: 200 + index * 450, y: 150 };
+  });
 
-  // Create group nodes (parent nodes) with ELK-calculated positions
+  // Create group nodes
   const groupNodes: Node[] = groups.map((group: ComponentGroup, index: number) => {
     const pos = elkPositions[group.name] || { x: 200 + index * 450, y: 150 };
     const numComponents = group.components.length;
@@ -379,7 +322,7 @@ function SystemDesignCanvasInner({
     };
   });
 
-  // Create component nodes with PERFECT centering and NO overlap
+  // Create component nodes
   const componentNodes: Node[] = groups.flatMap((group, groupIndex) => {
     const groupId = `group-${group.name}`;
     const componentX = (380 - 280) / 2;
@@ -412,19 +355,19 @@ function SystemDesignCanvasInner({
     });
   });
 
-  // Title node (placed above the groups)
+  // Title node
   const titleNode: Node | null = systemDesignTitle
     ? {
         id: 'system-design-title',
         type: 'title',
         data: { title: systemDesignTitle },
-        position: { x: 500, y: 40 }, // Default position above the groups
+        position: { x: 500, y: 40 },
         draggable: true,
         style: { zIndex: 10 },
       }
     : null;
 
-  // All nodes including title, client, groups, and components
+  // All nodes
   const allNodes = [
     ...(titleNode ? [titleNode] : []),
     clientNode,
@@ -432,7 +375,6 @@ function SystemDesignCanvasInner({
     ...componentNodes,
   ];
 
-  // Only use groupEdges for allEdges
   const allEdges = [...groupEdges];
 
   // Update nodes and edges when groups change
@@ -446,98 +388,145 @@ function SystemDesignCanvasInner({
     [setEdges]
   );
 
-  // Export functionality
-  const exportAsImage = useCallback(() => {
-    const reactFlowElement = document.querySelector('.react-flow');
-    if (!reactFlowElement) return;
+  // Handle import file selection
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
 
-    // Get the dimensions of the ReactFlow container
-    const rect = reactFlowElement.getBoundingClientRect();
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const json = JSON.parse(e.target?.result as string);
+          // Validate structure
+          if (
+            json &&
+            Array.isArray(json.groups) &&
+            Array.isArray(json.connections) &&
+            (typeof json.systemDesignTitle === 'string' || json.systemDesignTitle === null || json.systemDesignTitle === undefined)
+          ) {
+            if (onImportDesign) {
+              onImportDesign({
+                groups: json.groups,
+                connections: json.connections,
+                systemDesignTitle: json.systemDesignTitle ?? null,
+              });
+            }
+          } else {
+            alert('Invalid InfraAI design file.');
+          }
+        } catch (err) {
+          alert('Invalid JSON file.');
+        }
+      };
+      reader.readAsText(file);
+      // Reset the input
+      event.target.value = '';
+    }
+  };
 
-    // Create a more comprehensive SVG representation of the architecture
-    const svgWidth = Math.max(800, rect.width);
-    const svgHeight = Math.max(600, rect.height);
-
-    // Generate SVG content based on the current groups and connections
-    const groupElements = groups.map((group, index) => {
-      const x = 50 + (index % 2) * 350;
-      const y = 50 + Math.floor(index / 2) * 200;
-
-      const componentElements = group.components.map((component, compIndex) => {
-        const compX = x + 20;
-        const compY = y + 60 + compIndex * 40;
-        return `
-          <rect x="${compX}" y="${compY}" width="120" height="30" fill="#f3f4f6" stroke="#d1d5db" stroke-width="1" rx="4"/>
-          <text x="${compX + 60}" y="${compY + 20}" text-anchor="middle" font-family="Arial" font-size="10" fill="#374151">${component.name}</text>
-        `;
-      }).join('');
-
-      return `
-        <rect x="${x}" y="${y}" width="300" height="150" fill="white" stroke="#6366f1" stroke-width="2" rx="8"/>
-        <text x="${x + 150}" y="${y + 25}" text-anchor="middle" font-family="Arial" font-size="14" font-weight="bold" fill="#374151">${group.name}</text>
-        ${componentElements}
-      `;
-    }).join('');
-
-    // Generate connection lines
-    const connectionElements = connections.map((conn, index) => {
-      const fromGroup = groups.find(g => g.name === conn.from);
-      const toGroup = groups.find(g => g.name === conn.to);
-      if (!fromGroup || !toGroup) return '';
-
-      const fromIndex = groups.indexOf(fromGroup);
-      const toIndex = groups.indexOf(toGroup);
-      const fromX = 200 + (fromIndex % 2) * 350;
-      const fromY = 125 + Math.floor(fromIndex / 2) * 200;
-      const toX = 200 + (toIndex % 2) * 350;
-      const toY = 125 + Math.floor(toIndex / 2) * 200;
-
-      return `
-        <line x1="${fromX}" y1="${fromY}" x2="${toX}" y2="${toY}" stroke="#6366f1" stroke-width="2" marker-end="url(#arrowhead)"/>
-        <text x="${(fromX + toX) / 2}" y="${(fromY + toY) / 2 - 5}" text-anchor="middle" font-family="Arial" font-size="10" fill="#6366f1">${conn.label || ''}</text>
-      `;
-    }).join('');
-
-    const svgData = `
-      <svg xmlns="http://www.w3.org/2000/svg" width="${svgWidth}" height="${svgHeight}">
-        <defs>
-          <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-            <polygon points="0 0, 10 3.5, 0 7" fill="#6366f1"/>
-          </marker>
-        </defs>
-        <rect width="100%" height="100%" fill="white"/>
-        <text x="${svgWidth / 2}" y="30" text-anchor="middle" font-family="Arial" font-size="20" font-weight="bold" fill="#1f2937">System Architecture Diagram</text>
-        <text x="${svgWidth / 2}" y="50" text-anchor="middle" font-family="Arial" font-size="12" fill="#6b7280">Generated on ${new Date().toLocaleDateString()}</text>
-        ${groupElements}
-        ${connectionElements}
-      `;
-
-    // Convert SVG to blob and download
-    const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
-    const url = URL.createObjectURL(svgBlob);
-
-    // Create download link
-    const link = document.createElement('a');
-    link.download = `architecture-diagram-${new Date().toISOString().split('T')[0]}.svg`;
-    link.href = url;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // Handle export options
+  const handleExportJSON = () => {
+    // Only export if there is a design
+    if (!groups || groups.length === 0) return;
+    const exportData = {
+      groups,
+      connections, // use the prop directly
+      systemDesignTitle,
+    };
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'infraai-system-design.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [groups, connections]);
+    setShowExportMenu(false);
+  };
 
-  // Floating toolbar
+  const handleExportPNG = () => {
+    console.log('Exporting as PNG');
+    setShowExportMenu(false);
+  };
+
+  const handleExportSVG = () => {
+    console.log('Exporting as SVG');
+    setShowExportMenu(false);
+  };
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Floating toolbar with Import/Export
   const Toolbar = () => (
     <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 flex gap-2 bg-blue-600 rounded-full shadow-lg px-4 py-2 border border-blue-700 backdrop-blur">
-      <button
-        onClick={exportAsImage}
-        className="px-3 py-1 text-sm font-medium rounded-full text-white hover:bg-blue-700 hover:shadow-md transition-all duration-200 flex items-center gap-2 cursor-pointer"
-      >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
-        Export
-      </button>
+      {/* Import Button with Tooltip */}
+      <div className="relative group">
+        <button
+          onClick={handleImportClick}
+          className="px-3 py-1 text-sm font-medium rounded-full text-white hover:bg-blue-700 hover:shadow-md transition-all duration-200 flex items-center gap-2 cursor-pointer"
+          title="Import InfraAI (.json) design file"
+        >
+          <Download className="w-4 h-4" />
+          Import
+        </button>
+        {/* Tooltip */}
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap">
+          Import InfraAI (.json) design file
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+        </div>
+      </div>
+
+      {/* Export Button with Dropdown - only show if groups exist */}
+      {groups && groups.length > 0 && (
+        <div className="relative" ref={exportMenuRef}>
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            className="px-3 py-1 text-sm font-medium rounded-full text-white hover:bg-blue-700 hover:shadow-md transition-all duration-200 flex items-center gap-2 cursor-pointer"
+          >
+            <Upload className="w-4 h-4" />
+            Export
+            <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showExportMenu ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Export Options Menu */}
+          {showExportMenu && (
+            <div className="absolute top-full left-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-200 min-w-[200px] py-1 z-30">
+              <button
+                onClick={handleExportJSON}
+                className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-50 flex items-center gap-3 text-sm cursor-pointer"
+              >
+                <div>
+                  <div className="font-medium">.JSON</div>
+                  <div className="text-xs text-gray-500">Special InfraAI Design</div>
+                </div>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleFileChange}
+        className="hidden"
+      />
     </div>
   );
 
@@ -577,6 +566,9 @@ function SystemDesignCanvasInner({
         {/* Toggle Button */}
         {onToggleSidebar && <ToggleButton />}
 
+        {/* Import/Export Toolbar - Always visible */}
+        <Toolbar />
+
         <div className="text-center">
           <div className="text-6xl mb-4">🏗️</div>
           <h3 className="text-xl font-semibold text-gray-700 mb-2">
@@ -592,16 +584,6 @@ function SystemDesignCanvasInner({
 
   return (
     <div className="relative w-full h-full">
-      {/* Credits badge in top-right of canvas */}
-      {/* {isSignedIn && typeof credits === 'number' && (
-        <div className="absolute top-6 right-6 z-40 flex items-center">
-          <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-sm transition-colors duration-200 ${credits === 0 ? 'bg-red-100 text-red-700 border-red-300' : 'bg-gray-100 text-gray-700 border-gray-300'}`}
-          >
-            Credits: {credits}
-          </span>
-        </div>
-      )} */}
       {/* React Flow Diagram */}
       <ReactFlowProvider>
         <div className="w-full h-full relative">

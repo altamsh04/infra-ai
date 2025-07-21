@@ -26,16 +26,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'You have used all your system design credits.' }, { status: 403 });
     }
 
-    // Decrement credits
-    const { error: updateError } = await supabase
-      .from('user_credits')
-      .update({ credits: data.credits - 1 })
-      .eq('clerk_id', userId);
-
-    if (updateError) {
-      return NextResponse.json({ error: 'Failed to update credits.' }, { status: 500 });
-    }
-
     // Get user request from body
     const body = await req.json();
     const userRequest = body.request;
@@ -43,8 +33,23 @@ export async function POST(req: NextRequest) {
 
     // Call AI logic
     const aiResponse = await analyzeSystemRequest(userRequest, allComponents);
-    console.log('CREDITS STATE:', data.credits - 1);
-    return NextResponse.json({ ...aiResponse, credits: data.credits - 1 });
+
+    if (aiResponse.isSystemDesign) {
+      // Decrement credits only if a valid system design is returned
+      const { error: updateError } = await supabase
+        .from('user_credits')
+        .update({ credits: data.credits - 1 })
+        .eq('clerk_id', userId);
+
+      if (updateError) {
+        return NextResponse.json({ error: 'Failed to update credits.' }, { status: 500 });
+      }
+      console.log('CREDITS STATE:', data.credits - 1);
+      return NextResponse.json({ ...aiResponse, credits: data.credits - 1 });
+    } else {
+      // Do not decrement credits
+      return NextResponse.json({ ...aiResponse, credits: data.credits });
+    }
   } catch (err) {
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }

@@ -7,7 +7,7 @@ import { SystemDesignCanvas } from '@/components/SystemDesignCanvas';
 import systemDesignData from './system-design-components.json';
 import { analyzeSystemRequest, SystemComponent, ComponentGroup, AIRecommendation, AIResponse } from '@/lib/ai';
 import ChatSidebar from '@/components/ChatSidebar';
-import { MessageCircle, X, PanelRight, PanelLeft } from 'lucide-react';
+import { MessageCircle, X, PanelRight, PanelLeft, Coins, CreditCard } from 'lucide-react';
 import { SignedIn, useUser } from '@clerk/nextjs';
 
 export default function Home() {
@@ -20,6 +20,7 @@ export default function Home() {
   const { isSignedIn, user } = useUser();
   const [creditError, setCreditError] = useState<string | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
+  const [showPricingModal, setShowPricingModal] = useState(false);
   const creditsRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -101,21 +102,94 @@ export default function Home() {
     fetchCredits();
   }, [isSignedIn, user?.id]);
 
+  const handleBuyCreditsClick = () => {
+    setShowPricingModal(true);
+  };
+
+  const closePricingModal = () => {
+    setShowPricingModal(false);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden">
       {/* User profile in top-right corner */}
-      <div className="fixed top-6 right-6 z-50 flex items-center gap-2">
+      <div className="fixed top-6 right-6 z-50 flex items-center gap-3">
         <SignedIn>
           {typeof credits === 'number' && (
-            <span
-              className={`px-3 py-1 rounded-full text-xs font-semibold border shadow-sm transition-colors duration-200 ${credits === 0 ? 'bg-red-100 text-gray-700 border-gray-300' : 'bg-green-100 text-gray-700 border-gray-300'}`}
-              style={{ marginRight: 8 }}
-            >
-              Credits: {credits}
-            </span>
+            <div className="flex items-center gap-2">
+              {/* Credits Badge */}
+              <div
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold border-2 shadow-lg backdrop-blur-sm transition-all duration-200 ${
+                  credits === 0 
+                    ? 'bg-gradient-to-r from-red-50 to-red-100 text-red-800 border-red-200 shadow-red-100' 
+                    : 'bg-gradient-to-r from-green-50 to-emerald-100 text-green-800 border-green-200 shadow-green-100'
+                }`}
+              >
+                <Coins className={`w-4 h-4 ${credits === 0 ? 'text-red-600' : 'text-green-600'}`} />
+                <span>Credits: {credits}</span>
+              </div>
+              
+              {/* Buy Credits Button - only show when credits are 0 */}
+              {credits === 0 && (
+                <button
+                  onClick={handleBuyCreditsClick}
+                  className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-semibold text-sm rounded-lg shadow-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 border-2 border-blue-400"
+                >
+                  <CreditCard className="w-4 h-4" />
+                  Buy Credits
+                </button>
+              )}
+            </div>
           )}
         </SignedIn>
       </div>
+
+      {/* Pricing Modal */}
+      {showPricingModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm"
+            onClick={closePricingModal}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-white rounded-2xl shadow-2xl p-8 mx-4 max-w-md w-full transform scale-100 transition-all duration-200">
+            {/* Close Button */}
+            <button
+              onClick={closePricingModal}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors duration-200"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            
+            {/* Modal Content */}
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Coins className="w-8 h-8 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                  Pricing Soon
+                </h2>
+                <p className="text-gray-600 text-base leading-relaxed">
+                  We're working hard to bring you flexible pricing options. 
+                  Stay tuned for updates on our credit packages!
+                </p>
+              </div>
+              
+              {/* Action Button */}
+              <button
+                onClick={closePricingModal}
+                className="w-full mt-6 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg shadow-lg hover:from-blue-600 hover:to-purple-700 transform hover:scale-[1.02] transition-all duration-200"
+              >
+                Got it!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Chat Sidebar (toggleable) */}
       <div style={{ width: sidebarOpen ? 420 : 0, maxWidth: '95vw', transition: 'width 0.3s' }}>
         <ChatSidebar
@@ -145,7 +219,17 @@ export default function Home() {
             {creditError}
           </div>
         )}
-        <SystemDesignCanvas groups={groups} connections={connections} systemDesignTitle={systemDesignTitle} credits={credits} />
+        <SystemDesignCanvas 
+          groups={groups} 
+          connections={connections} 
+          systemDesignTitle={systemDesignTitle} 
+          credits={credits}
+          onImportDesign={(imported) => {
+            if (imported.groups && Array.isArray(imported.groups)) setGroups(imported.groups);
+            if (imported.connections && Array.isArray(imported.connections)) setConnections(imported.connections);
+            if ('systemDesignTitle' in imported) setSystemDesignTitle(imported.systemDesignTitle);
+          }}
+        />
       </div>
     </div>
   );

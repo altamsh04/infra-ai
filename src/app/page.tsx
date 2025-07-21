@@ -138,7 +138,7 @@ export default function Home() {
           aria-label={sidebarOpen ? "Close chat" : "Open chat"}
         >
           {sidebarOpen ? <PanelLeft className="w-6 h-6" /> : <PanelRight className="w-6 h-6" />}
-          <span className="ml-2 font-semibold text-base text-gray-700 select-none">InfraAI</span>
+          {/* <span className="ml-2 font-semibold text-base text-gray-700 select-none">InfraAI</span> */}
         </button>
         {creditError && (
           <div className="fixed top-20 right-6 z-50 bg-red-100 text-red-700 px-4 py-2 rounded shadow">

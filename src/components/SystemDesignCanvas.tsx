@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useMemo, useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef, useMemo } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -20,6 +20,7 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { User, Network, Database, Server, Shield, Settings, Cloud, Code, Zap, Globe, Trash, MessageCircle, X, Upload, Download, ChevronDown } from 'lucide-react';
+import Image from 'next/image';
 
 // Mock types for the components (since we don't have the actual imports)
 interface SystemComponent {
@@ -36,7 +37,7 @@ interface ComponentGroup {
 type GroupConnection = { from: string; to: string; label?: string };
 
 // Group name to icon mapping
-const groupIconMap: Record<string, any> = {
+const groupIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
   // Networking related
   networking: Network,
   network: Network,
@@ -103,7 +104,7 @@ function getGroupIcon(groupName?: string) {
 }
 
 // Group Node Component (container) - Simple design with top-left label
-const GroupNode = ({ data, id, selected }: { data: { group: ComponentGroup }, id: string, selected?: boolean }) => {
+const GroupNode = ({ data }: { data: { group: ComponentGroup } }) => {
   const { group } = data;
 
   // Consistent sizing constants - UPDATED to match component positioning
@@ -177,9 +178,11 @@ const CustomComponentNode = ({ data }: { data: { component: SystemComponent } })
     <div style={{ width: '280px', height: '100px', position: 'relative' }} className="flex flex-col items-center justify-center">
       <div className="flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-3 overflow-hidden">
         {!iconError && component.icon ? (
-          <img
+          <Image
             src={component.icon}
             alt={component.name}
+            width={40}
+            height={40}
             className="w-10 h-10 object-contain"
             onError={() => setIconError(true)}
             draggable={false}
@@ -233,7 +236,7 @@ interface SystemDesignCanvasProps {
 }
 
 function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
-  const { groups, connections = [], onGroupsChange, sidebarOpen, onToggleSidebar, systemDesignTitle, credits, onImportDesign } = props;
+  const { groups, connections = [], onGroupsChange, sidebarOpen, onToggleSidebar, systemDesignTitle, onImportDesign } = props;
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [localGroups, setLocalGroups] = useState(groups);
@@ -243,26 +246,29 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Layout configuration
-  const groupSpacingX = 450;
   const groupY = 150;
-  const startX = 200;
 
-  // Component sizing constants
-  const groupWidth = 380;
-  const componentWidth = 280;
-  const componentHeight = 100;
-  const componentGap = 20;
-  const labelHeight = 70;
-  const verticalPadding = 20;
-
-  // Client node (placed to the left)
-  const clientNode: Node = {
+  // Client node (placed to the left) - memoized to prevent recreation on every render
+  const clientNode = useMemo((): Node => ({
     id: 'client',
     type: 'client',
     data: {},
     position: { x: 40, y: groupY + 50 },
     draggable: true,
-  };
+  }), [groupY]);
+
+  // Title node - memoized to prevent recreation on every render
+  const titleNode = useMemo((): Node | null => {
+    if (!systemDesignTitle) return null;
+    return {
+      id: 'system-design-title',
+      type: 'title',
+      data: { title: systemDesignTitle },
+      position: { x: 500, y: 40 },
+      draggable: true,
+      style: { zIndex: 10 },
+    };
+  }, [systemDesignTitle]);
 
   // Combine all connections with the same from/to group into a single edge with a combined label
   const edgeMap = new Map<string, { from: string; to: string; labels: Set<string> }>();
@@ -323,16 +329,12 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
   });
 
   // Create component nodes
-  const componentNodes: Node[] = groups.flatMap((group, groupIndex) => {
+  const componentNodes: Node[] = groups.flatMap((group) => {
     const groupId = `group-${group.name}`;
     const componentX = (380 - 280) / 2;
     const numComponents = group.components.length;
     const totalComponentsHeight = numComponents * 100 + Math.max(0, numComponents - 1) * 20;
-    const contentHeight = numComponents * 100 + Math.max(0, numComponents - 1) * 20;
-    const minContentHeight = 200;
-    const actualContentHeight = Math.max(contentHeight, minContentHeight);
-    const availableContentSpace = actualContentHeight;
-    const topMargin = (availableContentSpace - totalComponentsHeight) / 2;
+    const topMargin = (totalComponentsHeight - totalComponentsHeight) / 2;
     return group.components.map((component, componentIndex) => {
       const componentY = 70 + 10 + topMargin + (componentIndex * (100 + 20));
       return {
@@ -355,33 +357,19 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
     });
   });
 
-  // Title node
-  const titleNode: Node | null = systemDesignTitle
-    ? {
-        id: 'system-design-title',
-        type: 'title',
-        data: { title: systemDesignTitle },
-        position: { x: 500, y: 40 },
-        draggable: true,
-        style: { zIndex: 10 },
-      }
-    : null;
-
-  // All nodes
-  const allNodes = [
-    ...(titleNode ? [titleNode] : []),
-    clientNode,
-    ...groupNodes,
-    ...componentNodes,
-  ];
-
-  const allEdges = [...groupEdges];
-
   // Update nodes and edges when groups change
   useEffect(() => {
-    setNodes(allNodes);
-    setEdges(allEdges);
-  }, [groups]);
+    const currentAllNodes = [
+      ...(titleNode ? [titleNode] : []),
+      clientNode,
+      ...groupNodes,
+      ...componentNodes,
+    ];
+    const currentAllEdges = [...groupEdges];
+    
+    setNodes(currentAllNodes);
+    setEdges(currentAllEdges);
+  }, [titleNode, clientNode, groupNodes, componentNodes, groupEdges, setNodes, setEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -417,7 +405,7 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
           } else {
             alert('Invalid InfraAI design file.');
           }
-        } catch (err) {
+        } catch {
           alert('Invalid JSON file.');
         }
       };
@@ -448,20 +436,12 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
     setShowExportMenu(false);
   };
 
-  const handleExportPNG = () => {
-    console.log('Exporting as PNG');
-    setShowExportMenu(false);
-  };
 
-  const handleExportSVG = () => {
-    console.log('Exporting as SVG');
-    setShowExportMenu(false);
-  };
 
   // Close export menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Element)) {
         setShowExportMenu(false);
       }
     };
@@ -547,7 +527,7 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
 
   // Listen for delete-group event
   useEffect(() => {
-    const handleDeleteGroup = (e: any) => {
+    const handleDeleteGroup = (e: CustomEvent) => {
       const groupName = e.detail.groupName;
       const updatedGroups = localGroups.filter(g => g.name !== groupName);
       const updatedConnections = localConnections.filter(conn => conn.from !== groupName && conn.to !== groupName);
@@ -555,8 +535,8 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
       setLocalConnections(updatedConnections);
       if (onGroupsChange) onGroupsChange(updatedGroups);
     };
-    window.addEventListener('delete-group', handleDeleteGroup);
-    return () => window.removeEventListener('delete-group', handleDeleteGroup);
+    window.addEventListener('delete-group', handleDeleteGroup as EventListener);
+    return () => window.removeEventListener('delete-group', handleDeleteGroup as EventListener);
   }, [localGroups, localConnections, onGroupsChange]);
 
   // Show a message when no groups are present

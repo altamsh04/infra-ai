@@ -1,5 +1,4 @@
 import React from 'react';
-import { Database, Globe, ShoppingCart } from 'lucide-react';
 
 interface DesignPromptProps {
   onPromptSelect: (prompt: string) => void;

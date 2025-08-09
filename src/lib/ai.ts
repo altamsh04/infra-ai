@@ -103,14 +103,14 @@ async function run(prompt: string) {
     text = text.replace(/\*\*/g, '');
 
     return text;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error during API call:", error);
 
-    if (error.message === "API_KEY_NOT_CONFIGURED") {
+    if (error instanceof Error && error.message === "API_KEY_NOT_CONFIGURED") {
       throw new Error("API_KEY_NOT_CONFIGURED");
     }
 
-    if (error.code === 403) {
+    if (error instanceof Error && (error as { code?: number }).code === 403) {
       throw new Error("API_KEY_INVALID");
     }
 
@@ -253,14 +253,13 @@ IMPORTANT GUIDELINES:
       const parsed = JSON.parse(jsonMatch[0]);
 
       // Map group names to group objects
-      const groups: ComponentGroup[] = (parsed.groups || []).map((group: any, groupIndex: number) => {
-        const groupComponents = group.components
-          .map((rec: any) => findComponentByIdOrName(rec.id, availableComponents))
+      const groups: ComponentGroup[] = (parsed.groups || []).map((group: Record<string, unknown>, groupIndex: number) => {
+        const groupComponents = (group.components as string[] || []).map((rec: string) => findComponentByIdOrName(rec, availableComponents))
           .filter(Boolean);
         return {
-          name: group.name,
-          color: group.color,
-          icon: group.icon,
+          name: group.name as string,
+          color: group.color as string | undefined,
+          icon: group.icon as string | undefined,
           components: groupComponents,
           position: { x: groupIndex * 400, y: 0 }
         };
@@ -268,8 +267,8 @@ IMPORTANT GUIDELINES:
 
       // Validate connections to ensure group names exist
       const groupNames = groups.map(g => g.name);
-      const validConnections = (parsed.connections || []).filter((conn: any) => {
-        return groupNames.includes(conn.from) && groupNames.includes(conn.to) && conn.label;
+      const validConnections = (parsed.connections || []).filter((conn: Record<string, unknown>) => {
+        return groupNames.includes(conn.from as string) && groupNames.includes(conn.to as string) && conn.label;
       });
 
       return {
@@ -310,14 +309,14 @@ Respond naturally and helpfully. If the user asks about system design or archite
       };
     }
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI analysis failed:", error);
 
-    if (error.message === "API_KEY_NOT_CONFIGURED") {
+    if (error instanceof Error && error.message === "API_KEY_NOT_CONFIGURED") {
       throw new Error("Please configure your Gemini API key in .env.local file");
     }
 
-    if (error.message === "API_KEY_INVALID") {
+    if (error instanceof Error && error.message === "API_KEY_INVALID") {
       throw new Error("Invalid Gemini API key. Please check your API key configuration");
     }
 

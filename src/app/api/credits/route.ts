@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ credits: data.credits });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 } 

@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Failed to initialize credits.' }, { status: 500 });
     }
     return NextResponse.json({ message: 'User credits initialized.' });
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 } 

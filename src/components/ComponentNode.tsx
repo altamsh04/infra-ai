@@ -4,6 +4,7 @@ import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import { SystemComponent } from '@/lib/ai';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 interface ComponentNodeData {
   component: SystemComponent & { icon?: string };
@@ -20,9 +21,11 @@ export const ComponentNode = memo(({ data }: NodeProps<ComponentNodeData>) => {
       style={{ fontFamily: 'var(--font-geist-sans), Inter, sans-serif' }}
     >
       <Handle type="target" position={Position.Left} className="w-2 h-2 bg-blue-400" />
-      <img
+      <Image
         src={component.icon || 'https://placehold.co/100x100'}
         alt={component.name}
+        width={48}
+        height={48}
         className="w-12 h-12 mb-2 rounded-full shadow-sm object-contain bg-gray-100"
         draggable={false}
       />

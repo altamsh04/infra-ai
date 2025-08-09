@@ -1,10 +1,9 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, X, Sparkles, Zap, MessageCircle, Clock } from 'lucide-react';
+import { Send, Bot, User, Loader2, X, Sparkles, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useUser, SignIn, UserButton } from '@clerk/nextjs';
-import { DesignPrompt } from './DesignPrompts';
 import { AIResponse } from '@/lib/ai';
 
 interface Message {
@@ -19,7 +18,6 @@ interface Message {
 interface ChatInterfaceProps {
   onSystemRequest: (request: string) => Promise<AIResponse>;
   isLoading: boolean;
-  explanation?: string;
 }
 
 // Enhanced typing animation component with cursor effect
@@ -34,7 +32,7 @@ function TypingMessage({ content, onDone }: { content: string; onDone?: () => vo
     if (!content) return;
     
     const interval = setInterval(() => {
-      setDisplayed((prev) => {
+      setDisplayed(() => {
         const next = content.slice(0, indexRef.current + 1);
         if (next.length === content.length) {
           clearInterval(interval);
@@ -53,7 +51,7 @@ function TypingMessage({ content, onDone }: { content: string; onDone?: () => vo
   useEffect(() => {
     if (!showCursor) return;
     const cursorInterval = setInterval(() => {
-      setShowCursor(prev => !prev);
+      setShowCursor(showCursor => !showCursor);
     }, 530);
     return () => clearInterval(cursorInterval);
   }, [showCursor]);
@@ -70,13 +68,12 @@ function TypingMessage({ content, onDone }: { content: string; onDone?: () => vo
 
 export function ChatInterface({
   onSystemRequest,
-  isLoading,
-  explanation
+  isLoading
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I'm InfraAI, developed by Altamsh Bairagdar. I'm your AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nTry one of these popular system design examples 👉",
+      content: "Hello! I&apos;m InfraAI, developed by Altamsh Bairagdar. I&apos;m your AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nTry one of these popular system design examples 👉",
       role: 'assistant',
       timestamp: new Date(),
       isSystemDesign: false,
@@ -337,7 +334,6 @@ export function ChatInterface({
                   'flex items-center gap-1 text-xs px-1',
                   message.role === 'user' ? 'text-blue-200 justify-end' : 'text-gray-400 justify-start'
                 )}>
-                  <Clock className="w-3 h-3" />
                   <span>{formatTime(message.timestamp)}</span>
                 </div>
               </div>
@@ -391,7 +387,6 @@ export function ChatInterface({
         {/* Character counter and status */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2 text-xs text-gray-500">
-            <MessageCircle className="w-3 h-3" />
             <span>Ready to help with system design</span>
           </div>
           <div className={cn(
@@ -495,7 +490,7 @@ export function ChatInterface({
                   <Bot className="w-6 h-6 text-white" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800 mb-1">Sign in to continue</h3>
-                <p className="text-sm text-gray-500">Access InfraAI's full capabilities</p>
+                <p className="text-sm text-gray-500">Access InfraAI&apos;s full capabilities</p>
               </div>
               <SignIn afterSignInUrl={typeof window !== 'undefined' ? window.location.href : '/'} />
             </div>

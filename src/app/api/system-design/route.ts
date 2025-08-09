@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       // Do not decrement credits
       return NextResponse.json({ ...aiResponse, credits: data.credits });
     }
-  } catch (err) {
+  } catch {
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 } 

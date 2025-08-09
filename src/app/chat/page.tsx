@@ -1,20 +1,33 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import { useState, useEffect, useRef } from 'react';
-import { ChatInterface } from '@/components/ChatInterface';
 import { SystemDesignCanvas } from '@/components/SystemDesignCanvas';
-import systemDesignData from '../system-design-components.json';
-import { analyzeSystemRequest, SystemComponent, ComponentGroup, AIRecommendation, AIResponse } from '@/lib/ai';
 import ChatSidebar from '@/components/ChatSidebar';
-import { MessageCircle, X, PanelRight, PanelLeft, Coins, CreditCard } from 'lucide-react';
+import { X, PanelRight, PanelLeft, Coins, CreditCard } from 'lucide-react';
 import { SignedIn, useUser } from '@clerk/nextjs';
+
+interface SystemComponent {
+  id: string;
+  name: string;
+  icon?: string;
+}
+
+interface ComponentGroup {
+  name: string;
+  components: SystemComponent[];
+}
+
+type GroupConnection = { from: string; to: string; label?: string };
+
+interface AIResponse {
+  message: string;
+  isSystemDesign: boolean;
+}
 
 export default function ChatPage() {
   const [groups, setGroups] = useState<ComponentGroup[]>([]);
-  const [connections, setConnections] = useState<any[]>([]);
+  const [connections, setConnections] = useState<GroupConnection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [explanation, setExplanation] = useState<string | undefined>(undefined);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [systemDesignTitle, setSystemDesignTitle] = useState<string | null>(null);
   const { isSignedIn, user } = useUser();
@@ -42,7 +55,6 @@ export default function ChatPage() {
       };
     }
     setIsLoading(true);
-    setExplanation(undefined);
     try {
       const res = await fetch('/api/system-design', {
         method: 'POST',
@@ -67,14 +79,13 @@ export default function ChatPage() {
       if (data.isSystemDesign && data.recommendation) {
         setGroups(data.recommendation.groups);
         setConnections(data.recommendation.connections || []);
-        setExplanation(data.recommendation.explanation);
         setSystemDesignTitle(data.recommendation.title || null);
       }
       return {
         message: data.message || 'System design request allowed.',
         isSystemDesign: !!data.isSystemDesign,
       };
-    } catch (error) {
+    } catch {
       setCreditError('Sorry, there was a problem processing your request.');
       return {
         message: 'Sorry, there was a problem processing your request.',
@@ -173,7 +184,7 @@ export default function ChatPage() {
                   Pricing Soon
                 </h2>
                 <p className="text-gray-600 text-base leading-relaxed">
-                  We're working hard to bring you flexible pricing options. 
+                  We&apos;re working hard to bring you flexible pricing options. 
                   Stay tuned for updates on our credit packages!
                 </p>
               </div>
@@ -196,7 +207,6 @@ export default function ChatPage() {
           open={sidebarOpen}
           onSystemRequest={handleSystemRequest}
           isLoading={isLoading}
-          explanation={explanation}
         />
       </div>
       {/* Right: Canvas */}
@@ -226,7 +236,7 @@ export default function ChatPage() {
           onImportDesign={(imported) => {
             if (imported.groups && Array.isArray(imported.groups)) setGroups(imported.groups);
             if (imported.connections && Array.isArray(imported.connections)) setConnections(imported.connections);
-            if ('systemDesignTitle' in imported) setSystemDesignTitle(imported.systemDesignTitle);
+            if (imported.systemDesignTitle !== undefined) setSystemDesignTitle(imported.systemDesignTitle);
           }}
         />
       </div>

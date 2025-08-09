@@ -9,15 +9,9 @@ export async function POST(req: NextRequest) {
     if (body.type !== 'user.created') {
       return NextResponse.json({ message: 'Ignored' });
     }
-    const clerkId = body.data.id;
-    // Insert user with 3 credits
-    const { error } = await supabase
-      .from('user_credits')
-      .insert([{ clerk_id: clerkId, credits: 3 }]);
-    if (error) {
-      return NextResponse.json({ error: 'Failed to initialize credits.' }, { status: 500 });
-    }
-    return NextResponse.json({ message: 'User credits initialized.' });
+    
+    // User creation event received - credits will be handled by database default
+    return NextResponse.json({ message: 'User creation event received.' });
   } catch {
     return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }

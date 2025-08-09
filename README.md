@@ -91,7 +91,7 @@ bun install
    create table user_credits (
      id uuid default uuid_generate_v4() primary key,
      clerk_id text not null unique,
-     credits int not null default 10,
+     credits int not null default 3,
      created_at timestamp with time zone default timezone('utc'::text, now()) not null,
      updated_at timestamp with time zone default timezone('utc'::text, now()) not null
    );

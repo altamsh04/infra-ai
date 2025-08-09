@@ -44,7 +44,7 @@ export default function LandingPage() {
 
   // Handle keyboard events for modal
   useEffect(() => {
-    const handleKeyDown = (e) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeModal();
       if (e.key === 'ArrowLeft') {
         setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);

@@ -73,7 +73,7 @@ export function ChatInterface({
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: "Hello! I&apos;m InfraAI, developed by Altamsh Bairagdar. I&apos;m your AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nTry one of these popular system design examples 👉",
+      content: "Hello! I'm InfraAI, developed by Altamsh Bairagdar. I'm your AI assistant specializing in system design and architecture. I can help you:\n\n• Design scalable system architectures\n• Choose the right components for your needs\n• Create visual system diagrams\n• Answer questions about technology and engineering\n• Have general conversations about tech topics\n\nTry one of these popular system design examples 👉",
       role: 'assistant',
       timestamp: new Date(),
       isSystemDesign: false,

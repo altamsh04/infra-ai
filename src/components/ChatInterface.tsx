@@ -473,30 +473,28 @@ export function ChatInterface({
         </div>
       </div>
 
-      {/* Enhanced Sign In Modal */}
-      {showSignIn && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 relative max-w-md w-full mx-4 border border-gray-100">
-            <button
-              className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95"
-              onClick={() => setShowSignIn(false)}
-              style={{ zIndex: 10000 }}
-            >
-              <X className="w-4 h-4 text-gray-600" />
-            </button>
-            <div className="pt-4">
-              <div className="text-center mb-6">
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Bot className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-1">Sign in to continue</h3>
-                <p className="text-sm text-gray-500">Access InfraAI&apos;s full capabilities</p>
-              </div>
-              <SignIn afterSignInUrl={typeof window !== 'undefined' ? window.location.href : '/'} />
-            </div>
-          </div>
-        </div>
-      )}
+{/* Enhanced Sign In Modal */}
+{showSignIn && (
+  <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-md animate-fadeIn">
+    <div className="bg-white rounded-3xl shadow-2xl p-8 relative max-w-md w-full mx-4 border border-gray-100 flex flex-col items-center justify-center">
+      <button
+        className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer"
+        onClick={() => setShowSignIn(false)}
+        style={{ zIndex: 10000 }}
+      >
+        <X className="w-4 h-4 text-gray-600" />
+      </button>
+      <div className="w-full flex items-center justify-center">
+        <SignIn
+          afterSignInUrl={
+            typeof window !== 'undefined' ? window.location.href : '/'
+          }
+        />
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }

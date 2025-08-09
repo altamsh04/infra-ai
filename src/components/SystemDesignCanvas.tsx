@@ -271,91 +271,100 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
   }, [systemDesignTitle]);
 
   // Combine all connections with the same from/to group into a single edge with a combined label
-  const edgeMap = new Map<string, { from: string; to: string; labels: Set<string> }>();
-  (connections || []).forEach((conn: GroupConnection) => {
-    const key = `${conn.from}__${conn.to}`;
-    if (!edgeMap.has(key)) {
-      edgeMap.set(key, { from: conn.from, to: conn.to, labels: new Set() });
-    }
-    edgeMap.get(key)!.labels.add(conn.label || '');
-  });
+  const groupEdges = useMemo((): Edge[] => {
+    const edgeMap = new Map<string, { from: string; to: string; labels: Set<string> }>();
+    (connections || []).forEach((conn: GroupConnection) => {
+      const key = `${conn.from}__${conn.to}`;
+      if (!edgeMap.has(key)) {
+        edgeMap.set(key, { from: conn.from, to: conn.to, labels: new Set() });
+      }
+      edgeMap.get(key)!.labels.add(conn.label || '');
+    });
 
-  const groupEdges: Edge[] = Array.from(edgeMap.values()).map((edge, idx) => ({
-    id: `group-conn-${edge.from}-${edge.to}-${idx}`,
-    source: `group-${edge.from}`,
-    target: `group-${edge.to}`,
-    type: 'smoothstep',
-    style: { stroke: '#6366f1', strokeWidth: 3 },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#6366f1',
-    },
-    label: Array.from(edge.labels).join(', '),
-    labelBgPadding: [6, 2],
-    labelBgBorderRadius: 6,
-    labelBgStyle: { fill: '#6366f1', color: '#fff' },
-    labelStyle: { fill: '#fff', fontWeight: '700' },
-  }));
+    return Array.from(edgeMap.values()).map((edge, idx) => ({
+      id: `group-conn-${edge.from}-${edge.to}-${idx}`,
+      source: `group-${edge.from}`,
+      target: `group-${edge.to}`,
+      type: 'smoothstep',
+      style: { stroke: '#6366f1', strokeWidth: 3 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: '#6366f1',
+      },
+      label: Array.from(edge.labels).join(', '),
+      labelBgPadding: [6, 2],
+      labelBgBorderRadius: 6,
+      labelBgStyle: { fill: '#6366f1', color: '#fff' },
+      labelStyle: { fill: '#fff', fontWeight: '700' },
+    }));
+  }, [connections]);
 
   // Mock ELK positions for demo
-  const elkPositions: Record<string, { x: number; y: number }> = {};
-  groups.forEach((group, index) => {
-    elkPositions[group.name] = { x: 200 + index * 450, y: 150 };
-  });
+  const elkPositions = useMemo((): Record<string, { x: number; y: number }> => {
+    const positions: Record<string, { x: number; y: number }> = {};
+    groups.forEach((group, index) => {
+      positions[group.name] = { x: 200 + index * 450, y: 150 };
+    });
+    return positions;
+  }, [groups]);
 
   // Create group nodes
-  const groupNodes: Node[] = groups.map((group: ComponentGroup, index: number) => {
-    const pos = elkPositions[group.name] || { x: 200 + index * 450, y: 150 };
-    const numComponents = group.components.length;
-    const contentHeight = numComponents * 100 + Math.max(0, numComponents - 1) * 20;
-    const minContentHeight = 200;
-    const actualContentHeight = Math.max(contentHeight, minContentHeight);
-    const totalHeight = 70 + actualContentHeight + 20;
-    return {
-      id: `group-${group.name}`,
-      type: 'group',
-      data: { group },
-      position: pos,
-      draggable: true,
-      style: {
-        zIndex: 1,
-        width: `380px`,
-        height: `${totalHeight}px`,
-        border: 'none',
-        background: 'transparent',
-        boxShadow: 'none'
-      },
-    };
-  });
-
-  // Create component nodes
-  const componentNodes: Node[] = groups.flatMap((group) => {
-    const groupId = `group-${group.name}`;
-    const componentX = (380 - 280) / 2;
-    const numComponents = group.components.length;
-    const totalComponentsHeight = numComponents * 100 + Math.max(0, numComponents - 1) * 20;
-    const topMargin = (totalComponentsHeight - totalComponentsHeight) / 2;
-    return group.components.map((component, componentIndex) => {
-      const componentY = 70 + 10 + topMargin + (componentIndex * (100 + 20));
+  const groupNodes = useMemo((): Node[] => {
+    return groups.map((group: ComponentGroup, index: number) => {
+      const pos = elkPositions[group.name] || { x: 200 + index * 450, y: 150 };
+      const numComponents = group.components.length;
+      const contentHeight = numComponents * 100 + Math.max(0, numComponents - 1) * 20;
+      const minContentHeight = 200;
+      const actualContentHeight = Math.max(contentHeight, minContentHeight);
+      const totalHeight = 70 + actualContentHeight + 20;
       return {
-        id: component.id,
-        type: 'component',
-        data: { component },
-        position: {
-          x: componentX,
-          y: componentY,
-        },
-        parentNode: groupId,
-        extent: 'parent',
-        draggable: false,
+        id: `group-${group.name}`,
+        type: 'group',
+        data: { group },
+        position: pos,
+        draggable: true,
         style: {
-          zIndex: 2,
-          width: `280px`,
-          height: `100px`
+          zIndex: 1,
+          width: `380px`,
+          height: `${totalHeight}px`,
+          border: 'none',
+          background: 'transparent',
+          boxShadow: 'none'
         },
       };
     });
-  });
+  }, [groups, elkPositions]);
+
+  // Create component nodes
+  const componentNodes = useMemo((): Node[] => {
+    return groups.flatMap((group) => {
+      const groupId = `group-${group.name}`;
+      const componentX = (380 - 280) / 2;
+      const numComponents = group.components.length;
+      const totalComponentsHeight = numComponents * 100 + Math.max(0, numComponents - 1) * 20;
+      const topMargin = (totalComponentsHeight - totalComponentsHeight) / 2;
+      return group.components.map((component, componentIndex) => {
+        const componentY = 70 + 10 + topMargin + (componentIndex * (100 + 20));
+        return {
+          id: component.id,
+          type: 'component',
+          data: { component },
+          position: {
+            x: componentX,
+            y: componentY,
+        },
+          parentNode: groupId,
+          extent: 'parent',
+          draggable: false,
+          style: {
+            zIndex: 2,
+            width: `280px`,
+            height: `100px`
+          },
+        };
+      });
+    });
+  }, [groups]);
 
   // Update nodes and edges when groups change
   useEffect(() => {
@@ -369,7 +378,7 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
     
     setNodes(currentAllNodes);
     setEdges(currentAllEdges);
-  }, [titleNode, clientNode, groupNodes, componentNodes, groupEdges, setNodes, setEdges]);
+  }, [titleNode, clientNode, groupNodes, componentNodes, groupEdges]);
 
   const onConnect = useCallback(
     (params: Connection) => setEdges((eds) => addEdge(params, eds)),
@@ -525,7 +534,7 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
     </button>
   );
 
-  // Listen for delete-group event
+    // Listen for delete-group event
   useEffect(() => {
     const handleDeleteGroup = (e: CustomEvent) => {
       const groupName = e.detail.groupName;
@@ -537,7 +546,7 @@ function SystemDesignCanvasInner(props: SystemDesignCanvasProps) {
     };
     window.addEventListener('delete-group', handleDeleteGroup as EventListener);
     return () => window.removeEventListener('delete-group', handleDeleteGroup as EventListener);
-  }, [localGroups, localConnections, onGroupsChange]);
+  }, [onGroupsChange]);
 
   // Show a message when no groups are present
   if (groups.length === 0) {

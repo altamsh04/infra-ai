@@ -120,6 +120,12 @@ async function run(prompt: string) {
 
 // Helper function to find component by name or ID
 function findComponentByIdOrName(componentId: string, availableComponents: SystemComponent[]): SystemComponent | undefined {
+  // Safety check: ensure componentId is a string
+  if (typeof componentId !== 'string') {
+    console.warn('findComponentByIdOrName: componentId is not a string:', componentId);
+    return undefined;
+  }
+
   // First try exact ID match
   let component = availableComponents.find(comp => comp.id === componentId);
 
@@ -254,8 +260,16 @@ IMPORTANT GUIDELINES:
 
       // Map group names to group objects
       const groups: ComponentGroup[] = (parsed.groups || []).map((group: Record<string, unknown>, groupIndex: number) => {
-        const groupComponents = (group.components as string[] || []).map((rec: string) => findComponentByIdOrName(rec, availableComponents))
-          .filter(Boolean);
+        // Handle both string IDs and component objects
+        const groupComponents = (Array.isArray(group.components) ? group.components : []).map((rec: unknown) => {
+          if (typeof rec === 'string') {
+            return findComponentByIdOrName(rec, availableComponents);
+          } else if (typeof rec === 'object' && rec !== null && 'id' in rec) {
+            return findComponentByIdOrName((rec as { id: string }).id, availableComponents);
+          }
+          return undefined;
+        }).filter(Boolean);
+        
         return {
           name: group.name as string,
           color: group.color as string | undefined,

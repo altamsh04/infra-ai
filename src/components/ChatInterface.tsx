@@ -463,16 +463,16 @@ export function ChatInterface({
         )}
 
         {/* Enhanced Footer */}
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-2 flex items-center justify-between">
           <p className="text-xs text-gray-500">
-            InfraAI can make mistakes. Developed by{' '}
+            InfraAI can make mistakes. Report issues on
             <a 
               href="https://www.github.com/altamsh04" 
               target="_blank" 
               rel="noopener noreferrer" 
               className="text-blue-600 hover:text-blue-700 hover:underline transition-colors duration-200 font-medium"
             >
-              @altamsh04
+              {' '} GitHub
             </a>
           </p>
         </div>

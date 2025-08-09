@@ -41,10 +41,7 @@ export default function ChatPage() {
     window.dispatchEvent(new Event('resize'));
   }, [sidebarOpen]);
 
-  // Load all components from JSON on mount
-  useEffect(() => {
-    console.log('Page mounted, groups:', groups);
-  }, [groups]);
+
 
   const handleSystemRequest = async (request: string): Promise<AIResponse> => {
     setCreditError(null);
